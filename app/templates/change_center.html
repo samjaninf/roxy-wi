@@ -1,0 +1,119 @@
+{% extends "base.html" %}
+{% block title %}{{lang.menu_links.change_center.title}}{% endblock %}
+{% block h2 %}{{lang.menu_links.change_center.h2}}{% endblock %}
+{% block content %}
+<link href="{{ url_for('static', filename='css/table-6.3.9.css') }}" rel="stylesheet" type="text/css">
+<link href="{{ url_for('static', filename='css/change-center.css') }}" rel="stylesheet" type="text/css">
+
+<div class="change-center-page">
+	{% if not change_center_available %}
+	<div class="alert alert-warning change-center-upgrade">
+		<span class="fas fa-lock" aria-hidden="true"></span>
+		{{lang.change_center.premium_required}}
+		<a href="https://roxy-wi.org/pricing" target="_blank" rel="noopener noreferrer">
+			{{lang.change_center.view_pricing}}
+		</a>
+	</div>
+	{% else %}
+	<div class="alert alert-info change-center-intro">
+		{{lang.change_center.intro}}
+	</div>
+
+	<div id="change-center" data-user-id="{{g.user_params['user_id']}}" data-role="{{g.user_params['role']}}">
+		<table class="overview hover order-column display compact" id="change-center-table">
+			<thead>
+			<tr class="overviewHead">
+				<th>ID</th>
+				<th>{{lang.words.name|title()}}</th>
+				<th>{{lang.words.service|title()}}</th>
+				<th>{{lang.words.server|title()}}</th>
+				<th>{{lang.words.status|title()}}</th>
+				<th>{{lang.words.user|title()}}</th>
+				<th>{{lang.words.date|title()}}</th>
+				<th>{{lang.words.action|title()}}</th>
+			</tr>
+			</thead>
+			<tbody></tbody>
+		</table>
+		<div id="change-center-empty" class="alert alert-warning" style="display:none;">{{lang.change_center.empty}}</div>
+	</div>
+	{% endif %}
+</div>
+
+{% if change_center_available %}
+<div id="change-details-dialog" title="{{lang.change_center.details}}" style="display:none;">
+	<div id="change-details-summary"></div>
+	<h4>{{lang.change_center.rollout}}</h4>
+	<div id="change-details-rollout" class="change-rollout" role="region" aria-label="{{lang.change_center.rollout}}">
+		<table>
+			<thead>
+			<tr>
+				<th>{{lang.change_center.node}}</th>
+				<th>{{lang.change_center.role}}</th>
+				<th>{{lang.words.status|title()}}</th>
+				<th>{{lang.change_center.result}}</th>
+			</tr>
+			</thead>
+			<tbody></tbody>
+		</table>
+	</div>
+	<h4>{{lang.change_center.diff}}</h4>
+	<div id="change-details-diff" class="change-diff" role="region" aria-label="{{lang.change_center.diff}}"></div>
+	<h4>{{lang.change_center.validation}}</h4>
+	<pre id="change-details-validation"></pre>
+	<h4>{{lang.change_center.deployment}}</h4>
+	<pre id="change-details-deployment"></pre>
+	<h4>{{lang.change_center.rollback_output}}</h4>
+	<pre id="change-details-rollback"></pre>
+</div>
+
+<div id="change-confirm-dialog" title="{{lang.words.confirm|title()}}" style="display:none;">
+	<p class="change-confirm-message">
+		<span class="fas fa-exclamation-triangle" aria-hidden="true"></span>
+		<span id="change-confirm-message"></span>
+	</p>
+</div>
+
+<div id="change-center-i18n"
+	 data-details="{{lang.change_center.details}}"
+	 data-validate="{{lang.words.check|title()}}"
+	 data-approve="{{lang.change_center.approve}}"
+	 data-deploy="{{lang.change_center.deploy}}"
+	 data-rollback="{{lang.words.rollback|title()}}"
+	 data-cancel="{{lang.words.cancel|title()}}"
+	 data-recover="{{lang.change_center.recover}}"
+	 data-recovered="{{lang.change_center.recovered}}"
+	 data-confirm-deploy="{{lang.change_center.confirm_deploy}}"
+	 data-confirm-rollback="{{lang.change_center.confirm_rollback}}"
+	 data-confirm-cancel="{{lang.change_center.confirm_cancel}}"
+	 data-confirm-recover="{{lang.change_center.confirm_recover}}"
+	 data-confirm="{{lang.words.confirm|title()}}"
+	 data-operation-success="{{lang.change_center.operation_success}}"
+	 data-execution-mode="{{lang.change_center.execution_mode}}"
+	 data-execution-mode-rolling="{{lang.change_center.execution_modes.rolling}}"
+	 data-execution-mode-parallel="{{lang.change_center.execution_modes.parallel}}"
+	 data-role-master="{{lang.change_center.roles.master}}"
+	 data-role-slave="{{lang.change_center.roles.slave}}"
+	 data-role-standalone="{{lang.change_center.roles.standalone}}"
+	 data-pending="{{lang.change_center.statuses.pending}}"
+	 data-skipped="{{lang.change_center.statuses.skipped}}"
+	 data-deployment-failed="{{lang.change_center.statuses.deployment_failed}}"
+	 data-draft="{{lang.change_center.statuses.draft}}"
+	 data-validating="{{lang.change_center.statuses.validating}}"
+	 data-validated="{{lang.change_center.statuses.validated}}"
+	 data-validation-failed="{{lang.change_center.statuses.validation_failed}}"
+	 data-pending-approval="{{lang.change_center.statuses.pending_approval}}"
+	 data-approved="{{lang.change_center.statuses.approved}}"
+	 data-deploying="{{lang.change_center.statuses.deploying}}"
+	 data-deployment-interrupted="{{lang.change_center.statuses.deployment_interrupted}}"
+	 data-deployed="{{lang.change_center.statuses.deployed}}"
+	 data-failed="{{lang.change_center.statuses.failed}}"
+	 data-rolling-back="{{lang.change_center.statuses.rolling_back}}"
+	 data-rolled-back="{{lang.change_center.statuses.rolled_back}}"
+	 data-auto-rolled-back="{{lang.change_center.statuses.auto_rolled_back}}"
+	 data-rollback-failed="{{lang.change_center.statuses.rollback_failed}}"
+	 data-auto-rollback-failed="{{lang.change_center.statuses.auto_rollback_failed}}"
+	 data-cancelled="{{lang.change_center.statuses.cancelled}}"></div>
+<script src="{{ url_for('static', filename='js/change-center.js') }}"></script>
+{% endif %}
+{% endblock %}

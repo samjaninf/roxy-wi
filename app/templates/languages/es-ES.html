@@ -81,6 +81,11 @@
             "title": "Trabajando con versiones de configuración de Keepalived"
         },
     },
+    "change_center": {
+        "link": "Cambios",
+        "title": "Centro de cambios",
+        "h2": "Centro de cambios"
+    },
     "ssl": {
         "link": "SSL",
         "title": "Añadir proxy: Subir certificados SSL"
@@ -121,6 +126,47 @@
     }
 }
 %}
+{% set change_center = {
+    "intro": "Valide, apruebe, despliegue y revierta cambios de configuración desde un solo lugar.",
+    "premium_required": "Change Center solo está disponible con un plan Premium activo.",
+    "view_pricing": "Ver precios y cambiar de plan",
+    "empty": "Todavía no se han creado cambios de configuración.",
+    "created_from_editor": "El contenido actual del editor se guardará como borrador. La configuración activa no cambiará.",
+    "create": "Crear cambio",
+    "created": "Cambio creado",
+    "requires_approval": "Requiere aprobación de otro administrador",
+    "details": "Detalles del cambio",
+    "diff": "Diferencias de configuración",
+    "validation": "Resultado de validación",
+    "deployment": "Resultado del despliegue",
+    "rollback_output": "Resultado de reversión",
+    "execution_mode": "Modo de ejecución",
+    "execution_mode_help": "Rolling despliega los nodos uno por uno; Parallel despliega hasta ocho nodos simultáneamente.",
+    "execution_modes": {"rolling": "Rolling (secuencial)", "parallel": "Parallel (paralelo)"},
+    "rollout": "Despliegue del clúster",
+    "node": "Nodo",
+    "role": "Rol",
+    "result": "Último resultado",
+    "roles": {"master": "Maestro", "slave": "Esclavo", "standalone": "Independiente"},
+    "approve": "Aprobar",
+    "deploy": "Desplegar",
+    "recover": "Desbloquear",
+    "recovered": "Operación desbloqueada",
+    "operation_success": "Operación completada",
+    "confirm_deploy": "¿Desplegar este cambio validado?",
+    "confirm_rollback": "¿Revertir este cambio desplegado?",
+    "confirm_cancel": "¿Cancelar este cambio?",
+    "confirm_recover": "¿Desbloquear esta operación bloqueada? La configuración remota no se modificará.",
+    "statuses": {
+        "pending": "Pendiente", "skipped": "Omitido", "deployment_failed": "Error de despliegue",
+        "draft": "Borrador", "validating": "Validando", "validated": "Validado",
+        "validation_failed": "Validación fallida", "pending_approval": "Pendiente de aprobación",
+        "approved": "Aprobado", "deploying": "Desplegando", "deployment_interrupted": "Despliegue interrumpido", "deployed": "Desplegado",
+        "failed": "Fallido", "rolling_back": "Revirtiendo", "rolled_back": "Revertido",
+        "rollback_failed": "Reversión fallida", "auto_rolled_back": "Despliegue fallido, reversión automática completada",
+        "auto_rollback_failed": "Fallaron el despliegue y la reversión automática", "cancelled": "Cancelado"
+    }
+} %}
 {% set services = {
     "hapservers_desc": "Checker supervisa el servicio. Si el servicio cambia su estado, Checker alertará vía Telegram, Slack, Email, Web",
     "last_edit": "Última edición"

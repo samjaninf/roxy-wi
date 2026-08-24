@@ -25,6 +25,7 @@ from app.views.admin.views import SettingsView
 from app.modules.roxywi.class_models import LoginRequest
 import app.modules.roxywi.auth as roxywi_auth
 import app.modules.roxywi.common as roxywi_common
+from app.api.routes import change_routes as change_api_routes
 
 
 @bp.before_request
@@ -152,6 +153,7 @@ def spec():
     swag = swagger(app)
     swag['info']['version'] = "1.0"
     swag['info']['title'] = "Roxy-WI API"
+    change_api_routes.extend_spec(swag)
     return jsonify(swag)
 
 

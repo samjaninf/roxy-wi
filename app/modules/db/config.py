@@ -5,17 +5,20 @@ import app.modules.roxy_wi_tools as roxy_wi_tools
 from pathlib import Path
 
 
-def insert_config_version(server_id: int, user_id: int, service: str, local_path: str, remote_path: str, diff: str):
+def insert_config_version(
+	server_id: int, user_id: int, service: str, local_path: str, remote_path: str, diff: str, message: str = None
+):
 	get_date = roxy_wi_tools.GetDate()
 	cur_date = get_date.return_date('regular')
 	try:
-		ConfigVersion.insert(
+		return ConfigVersion.insert(
 			server_id=server_id,
 			user_id=user_id,
 			service=service,
 			local_path=local_path,
 			remote_path=remote_path,
 			diff=diff,
+			message=message,
 			date=cur_date
 		).execute()
 	except Exception as e:

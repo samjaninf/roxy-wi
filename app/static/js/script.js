@@ -77,12 +77,75 @@ $( document ).ajaxComplete(function( event, request, settings ) {
 $.ajaxSetup({
 	headers: {"X-CSRF-TOKEN": csrf_token},
 });
+function normalizeRoxywiResponse(value) {
+	if (Array.isArray(value)) {
+		value = value.join('\n');
+	} else if (value && typeof value === 'object') {
+		value = value.error || value.message || JSON.stringify(value);
+	}
+	return String(value || '')
+		.replace(/<br\s*\/?\s*>/gi, '\n')
+		.replace(/\x1b\[[0-?]*[ -/]*[@-~]/g, '')
+		.replace(/\r/g, '')
+		.replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/g, '');
+}
+function uniqueRoxywiMessages(messages) {
+	return messages.filter(function (message, index) {
+		return message && messages.indexOf(message) === index;
+	});
+}
+function parseRoxywiResponse(value) {
+	const normalized = normalizeRoxywiResponse(value);
+	const separated = normalized.replace(
+		/\s*(\[(?:NOTICE|WARNING|WARN|ALERT|ALER|ERROR|EMERG)\])/gi,
+		'\n$1'
+	);
+	const lines = separated.split('\n').map(function (line) { return line.trim(); }).filter(Boolean);
+	const warnings = uniqueRoxywiMessages(lines.filter(function (line) {
+		return /\[(?:WARNING|WARN)\]/i.test(line);
+	}));
+	const errors = uniqueRoxywiMessages(lines.filter(function (line) {
+		if (/\[(?:WARNING|WARN|NOTICE)\]/i.test(line)) {
+			return false;
+		}
+		return /\[(?:ALERT|ALER|ERROR|EMERG)\]/i.test(line)
+			|| /(^|\s)(?:error|fatal|failed|failure|emerg|syntax error|unexpected|unknown)(?:[.:]|\s|$)/i.test(line);
+	}));
+
+	const inactiveMatch = normalized.match(
+		/([A-Za-z0-9_.@-]+\.service is not active, cannot reload\.?)|([A-Za-z0-9_.@-]+: [a-z0-9_.@-]+ is not active after deployment)/i
+	);
+	let reason = inactiveMatch ? (inactiveMatch[1] || inactiveMatch[2]) : '';
+	if (!reason && errors.length) {
+		reason = errors[errors.length - 1];
+	}
+	if (!reason) {
+		reason = lines[lines.length - 1] || 'Unknown server error';
+	}
+	if (reason.length > 300) {
+		reason = reason.substring(0, 297) + '...';
+	}
+
+	let summary = reason;
+	if (/rollback status is (?:auto_)?rollback_failed|automatic rollback (?:also )?failed/i.test(normalized)) {
+		summary = 'Deployment failed. Automatic rollback failed. Reason: ' + reason;
+	} else if (/rollback status is (?:auto_)?rolled_back|restored automatically/i.test(normalized)) {
+		summary = 'Deployment failed. The previous configuration was restored automatically. Reason: ' + reason;
+	}
+	return {raw: normalized, summary: summary, errors: errors, warnings: warnings};
+}
+function compactRoxywiMessages(messages, limit = 5) {
+	const shown = messages.slice(0, limit).map(function (message) {
+		return message.length > 400 ? message.substring(0, 397) + '...' : message;
+	});
+	if (messages.length > limit) {
+		shown.push('... and ' + (messages.length - limit) + ' more message(s).');
+	}
+	return shown.join('\n');
+}
 $(document).ajaxError(function myErrorHandler(event, xhr, ajaxOptions, thrownError) {
 	if (xhr.status != 401 && xhr.status != 404) {
 		let errorMessage = xhr.responseJSON && xhr.responseJSON.error;
-		if (Array.isArray(errorMessage)) {
-			errorMessage = errorMessage.join(', ');
-		}
 		if (!errorMessage) {
 			if (xhr.status === 0) {
 				errorMessage = 'Cannot connect to the server';
@@ -90,7 +153,9 @@ $(document).ajaxError(function myErrorHandler(event, xhr, ajaxOptions, thrownErr
 				errorMessage = thrownError || xhr.statusText || ('HTTP error ' + xhr.status);
 			}
 		}
-		toastr.error(escapeHtml(String(errorMessage)));
+		const parsedResponse = parseRoxywiResponse(errorMessage);
+		toastr.clear();
+		toastr.error(escapeHtml(parsedResponse.summary));
 	}
 });
 function showStats() {
@@ -1055,8 +1120,8 @@ function waitForElm(selector) {
 function randomIntFromInterval(min, max) {
   return Math.floor(Math.random() * (max - min + 1) + min)
 }
-const removeEmptyLines = str => str.split(/\r?\n/).filter(line => line.trim() !== '').join('\n');
 function returnNiceCheckingConfig(data) {
+	data = normalizeRoxywiResponse(data);
 	if (data.indexOf('sudo: firewall-cmd: command not found') != '-1') {
 		data = data.replaceAll('sudo: firewall-cmd: command not found\n', '');
 		data = data.replaceAll('sudo: firewall-cmd: command not found', '');
@@ -1067,73 +1132,23 @@ function returnNiceCheckingConfig(data) {
 	data = data.replaceAll('nginx: the configuration file /etc/nginx/nginx.conf syntax is ok', '');
 	data = data.replaceAll('nginx: configuration file /etc/nginx/nginx.conf test is successful', '');
 	data = data.replaceAll('Syntax OK', '');
-	let output = data.split('<br>')
-	let alerts = [];
-	let alert_warning = '';
-	let alert_warning2 = '';
-	let alert_error = '';
-	let second_alert = false;
-	alerts.push(output[0] + '\n' + output[1]);
-	let server_name = output[0];
-	let server_name2 = '';
-	try {
-		for (let i = 0; i < output.length; i++) {
-			if (i > 1) {
-				if (output[i] !== undefined) {
-					alerts.push(output[i])
-				}
-			}
-		}
-	} catch (err) {
-		console.log(err);
-	}
-	alerts.forEach((element) => {
-		if (element.indexOf('error: ') != '-1' || element.indexOf('Fatal') != '-1' || element.indexOf('Error') != '-1'
-			|| element.indexOf('failed ') != '-1' || element.indexOf('emerg] ') != '-1' || element.indexOf('Syntax error ') != '-1'
-			|| element.indexOf('Parsing') != '-1' || element.indexOf('Unknown') != '-1' || element.indexOf('Unexpected') != '-1'
-			|| element.indexOf('unknown') != '-1') {
-			alert_error = alert_error + element;
-			return
-		}
-		if (element.indexOf('[WARNING]') != '-1' || element.indexOf('[ALER]') != '-1' || element.indexOf('[warn]') != '-1') {
-			element = removeEmptyLines(element);
-			if (element.indexOf('global server state file') != '-1') {
-				return;
-			}
-			if (second_alert === false) {
-				alert_warning = alert_warning + element;
-			} else {
-				alert_warning2 = alert_warning2 + element;
-				server_name = 'Master server:';
-				server_name2 = 'Slave server:';
-			}
-		}
-		if (second_alert && output.length > 4 && output[1].indexOf('[NOTICE]') == '-1') {
-			server_name = 'Master server:';
-			server_name2 = 'Slave server:';
-		}
-		if (element.length === 0) {
-			second_alert = true;
-		}
-
-	})
-	if (alert_error) {
-		toastr.error(server_name + '<pre style="padding: 0; margin: 0;">' + alert_error + '</pre>');
+	const parsedResponse = parseRoxywiResponse(data);
+	const relevantWarnings = parsedResponse.warnings.filter(function (warning) {
+		return warning.indexOf('global server state file') === -1;
+	});
+	if (parsedResponse.errors.length) {
+		toastr.error('<pre style="padding: 0; margin: 0;">' + escapeHtml(
+			compactRoxywiMessages(parsedResponse.errors)
+		) + '</pre>');
 		toastr.info('Config not applied');
 		return 1;
-	} else if (alert_warning) {
-		toastr.warning(server_name + '<pre style="padding: 0; margin: 0;">' + alert_warning + '</pre>');
-		toastr.success('<b>' + server_name + ' Configuration file is valid</b>');
-	} else {
-		toastr.success('<b>' + server_name + ' Configuration file is valid</b>');
 	}
-
-	if (alert_warning2) {
-		toastr.warning(server_name2 + '<pre style="padding: 0; margin: 0;">' + alert_warning2 + '</pre>');
-		toastr.success('<b>' + server_name2 + ' Configuration file is valid</b>');
-	} else if (server_name2) {
-		toastr.success('<b>' + server_name2 + ' Configuration file is valid</b>');
+	if (relevantWarnings.length) {
+		toastr.warning('<pre style="padding: 0; margin: 0;">' + escapeHtml(
+			compactRoxywiMessages(relevantWarnings)
+		) + '</pre>');
 	}
+	toastr.success('<b>Configuration file is valid</b>');
 	return 0;
 }
 function loadVersion() {

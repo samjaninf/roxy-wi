@@ -12,7 +12,7 @@
         <p>
             Read <a href="https://roxy-wi.org/pricing" title="Roxy-WI pricing" target="_blank" class="link">here</a> about subscriptions
         </p>
-    {% elif user_subscription['user_plan'] == 'user' or user_subscription['user_plan'] != 'support' %}
+    {% elif user_subscription['user_plan'] != 'support' %}
         This feature is not available for your plan. To change the plan, follow this <a href="https://roxy-wi.org/pricing" title="Roxy-WI pricing" target="_blank" class="link">link</a>
     {% endif %}
     </h4>

@@ -167,7 +167,7 @@ def check_service_config(server_ip: str, server_id: int, service: str) -> None:
 		raise Exception(f'error: Cannot generate command: {e}')
 
 	try:
-		server_mod.ssh_command(server_ip, check_config)
+		server_mod.ssh_command(server_ip, check_config, rc=1)
 	except Exception as e:
 		raise Exception(e)
 

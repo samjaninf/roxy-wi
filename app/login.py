@@ -5,6 +5,7 @@ from app import app
 import app.modules.db.user as user_sql
 import app.modules.db.token as token_sql
 import app.modules.db.oidc as oidc_sql
+from app.modules.change.access import is_change_center_available
 from app.modules.oidc.access import is_oidc_available
 import app.modules.roxywi.roxy as roxy
 import app.modules.roxywi.auth as roxywi_auth
@@ -15,17 +16,23 @@ from app.modules.roxywi.exception import RoxywiResourceNotFound
 
 
 @app.context_processor
-def inject_oidc_availability():
+def inject_feature_availability():
     user_params = getattr(g, 'user_params', None)
     if not user_params or not user_params.get('user'):
-        return {'oidc_available': False}
+        return {'oidc_available': False, 'change_center_available': False}
+
+    subscription = roxywi_common.return_user_subscription()
 
     oidc_available = getattr(g, 'oidc_available', None)
     if oidc_available is None:
-        oidc_available = is_oidc_available()
+        oidc_available = is_oidc_available(subscription)
         g.oidc_available = oidc_available
 
-    return {'oidc_available': oidc_available}
+    change_center_available = is_change_center_available(subscription)
+    return {
+        'oidc_available': oidc_available,
+        'change_center_available': change_center_available,
+    }
 
 
 @app.before_request

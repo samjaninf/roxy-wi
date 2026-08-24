@@ -81,6 +81,11 @@
             "title": "Travailler sur les versions de configuration Keepalived"
         },
     },
+    "change_center": {
+        "link": "Modifications",
+        "title": "Centre de modifications",
+        "h2": "Centre de modifications"
+    },
     "ssl": {
         "link": "SSL",
         "title": "Ajout de proxy: Charger les certificats SSL"
@@ -121,6 +126,47 @@
     }
 }
 %}
+{% set change_center = {
+    "intro": "Validez, approuvez, déployez et annulez les modifications de configuration depuis un seul endroit.",
+    "premium_required": "Change Center est disponible uniquement avec un forfait Premium actif.",
+    "view_pricing": "Voir les tarifs et changer de forfait",
+    "empty": "Aucune modification de configuration n'a encore été créée.",
+    "created_from_editor": "Le contenu actuel de l'éditeur sera enregistré comme brouillon. La configuration active ne sera pas modifiée.",
+    "create": "Créer une modification",
+    "created": "Modification créée",
+    "requires_approval": "Approbation par un autre administrateur requise",
+    "details": "Détails de la modification",
+    "diff": "Différences de configuration",
+    "validation": "Résultat de la validation",
+    "deployment": "Résultat du déploiement",
+    "rollback_output": "Résultat de l'annulation",
+    "execution_mode": "Mode d'exécution",
+    "execution_mode_help": "Rolling déploie les nœuds un par un ; Parallel déploie jusqu'à huit nœuds simultanément.",
+    "execution_modes": {"rolling": "Rolling (séquentiel)", "parallel": "Parallel (parallèle)"},
+    "rollout": "Déploiement du cluster",
+    "node": "Nœud",
+    "role": "Rôle",
+    "result": "Dernier résultat",
+    "roles": {"master": "Maître", "slave": "Esclave", "standalone": "Autonome"},
+    "approve": "Approuver",
+    "deploy": "Déployer",
+    "recover": "Débloquer",
+    "recovered": "Opération débloquée",
+    "operation_success": "Opération terminée",
+    "confirm_deploy": "Déployer cette modification validée ?",
+    "confirm_rollback": "Annuler cette modification déployée ?",
+    "confirm_cancel": "Annuler cette modification ?",
+    "confirm_recover": "Débloquer cette opération bloquée ? La configuration distante ne sera pas modifiée.",
+    "statuses": {
+        "pending": "En attente", "skipped": "Ignoré", "deployment_failed": "Échec du déploiement",
+        "draft": "Brouillon", "validating": "Validation", "validated": "Validée",
+        "validation_failed": "Échec de validation", "pending_approval": "En attente d'approbation",
+        "approved": "Approuvée", "deploying": "Déploiement", "deployment_interrupted": "Déploiement interrompu", "deployed": "Déployée",
+        "failed": "Échec", "rolling_back": "Annulation", "rolled_back": "Annulée",
+        "rollback_failed": "Échec de l'annulation", "auto_rolled_back": "Déploiement échoué, annulation automatique effectuée",
+        "auto_rollback_failed": "Échec du déploiement et de l'annulation automatique", "cancelled": "Annulée"
+    }
+} %}
 {% set services = {
     "hapservers_desc": "Checker surveille le service. Si le service change d\'état, Vérifier l\'alerte via Telegram, Slack, Email, Web",
     "last_edit": "Dernière modif."

@@ -37,6 +37,7 @@ def connect(get_migrator=None):
         conn = SqliteExtDatabase(db, pragmas=(
             ('cache_size', -1024 * 64),  # 64MB page-cache.
             ('journal_mode', 'wal'),
+            ('busy_timeout', 5000),  # Wait briefly instead of failing immediately on a concurrent write.
             ('foreign_keys', 1),
             ('page_size', 4096),
         ))
@@ -580,6 +581,60 @@ class ConfigVersion(BaseModel):
         table_name = 'config_versions'
 
 
+class ConfigChange(BaseModel):
+    id = AutoField()
+    server_id = IntegerField(index=True)
+    group_id = IntegerField(index=True)
+    user_id = IntegerField(index=True)
+    approved_by = IntegerField(null=True)
+    service = CharField(index=True)
+    action = CharField()
+    execution_mode = CharField(constraints=[SQL("DEFAULT 'rolling'")])
+    status = CharField(default='draft', index=True)
+    title = CharField()
+    description = TextField(null=True)
+    remote_path = CharField()
+    draft_path = CharField()
+    rollback_path = CharField()
+    diff = TextField(default='')
+    validation_output = TextField(null=True)
+    deployment_output = TextField(null=True)
+    rollback_output = TextField(null=True)
+    requires_approval = IntegerField(constraints=[SQL('DEFAULT 0')])
+    created_at = DateTimeField(default=datetime.now, index=True)
+    updated_at = DateTimeField(default=datetime.now)
+    deployed_at = DateTimeField(null=True)
+
+    class Meta:
+        table_name = 'config_changes'
+
+
+class ConfigChangeTarget(BaseModel):
+    id = AutoField()
+    change = ForeignKeyField(
+        ConfigChange, backref='targets', column_name='change_id', on_delete='CASCADE'
+    )
+    server_id = IntegerField(index=True)
+    server_ip = CharField()
+    server_name = CharField()
+    role = CharField()
+    position = IntegerField()
+    status = CharField(default='pending', index=True)
+    rollback_path = CharField()
+    validation_output = TextField(null=True)
+    deployment_output = TextField(null=True)
+    rollback_output = TextField(null=True)
+    updated_at = DateTimeField(default=datetime.now)
+    deployed_at = DateTimeField(null=True)
+
+    class Meta:
+        table_name = 'config_change_targets'
+        indexes = (
+            (('change', 'server_id'), True),
+            (('change', 'position'), True),
+        )
+
+
 class SystemInfo(BaseModel):
     id = AutoField()
     server_id = IntegerField()
@@ -937,7 +992,7 @@ def create_tables():
     with conn:
         conn.create_tables(
             [User, Server, Role, Telegram, Slack, Groups, UserGroups, OidcProvider, OidcIdentity, OidcGroupMapping,
-             RevokedToken, ConfigVersion, Setting, RoxyTool, Alerts,
+             RevokedToken, ConfigVersion, ConfigChange, ConfigChangeTarget, Setting, RoxyTool, Alerts,
              Cred, Backup, Metrics, WafMetrics, Version, Option, SavedServer, Waf, ActionHistory, PortScannerSettings,
              PortScannerPorts, PortScannerHistory, ServiceSetting, MetricsHttpStatus, SMON, WafRules, GeoipCodes,
              NginxMetrics, SystemInfo, Services, UserName, GitSetting, CheckerSetting, ApacheMetrics, WafNginx, ServiceStatus,

@@ -10,6 +10,7 @@ import app.modules.db.service as service_sql
 import app.modules.service.backup as backup_mod
 import app.modules.roxywi.common as roxywi_common
 from app.middleware import get_user_params, page_for_admin, check_group
+from app.modules.subscription.access import GIT_BACKUP, feature_required
 from app.modules.roxywi.class_models import BackupRequest, S3BackupRequest, GitBackupRequest, BaseResponse
 from app.modules.common.common_classes import SupportClass
 
@@ -483,6 +484,7 @@ class GitBackupView(MethodView):
         self.is_api = is_api
 
     @staticmethod
+    @feature_required(GIT_BACKUP)
     def get(backup_id: int):
         """
         Retrieves the details of a specific Git backup configuration.
@@ -535,6 +537,7 @@ class GitBackupView(MethodView):
 
         return jsonify(model_to_dict(backup, recurse=False))
 
+    @feature_required(GIT_BACKUP)
     @validate(body=GitBackupRequest)
     def post(self, body: GitBackupRequest):
         """
@@ -598,6 +601,7 @@ class GitBackupView(MethodView):
         except Exception as e:
             return roxywi_common.handler_exceptions_for_json_data(e, 'Cannot create GIT backup')
 
+    @feature_required(GIT_BACKUP)
     @validate(body=GitBackupRequest)
     def put(self, backup_id: int, body: GitBackupRequest):
         """
@@ -666,6 +670,7 @@ class GitBackupView(MethodView):
             return roxywi_common.handler_exceptions_for_json_data(e, 'Cannot update GIT backup')
         return BaseResponse().model_dump(mode='json'), 201
 
+    @feature_required(GIT_BACKUP)
     @validate(body=GitBackupRequest)
     def delete(self, backup_id: int, body: GitBackupRequest):
         """

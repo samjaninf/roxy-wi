@@ -10,6 +10,7 @@ from app.modules.db.db_model import OidcIdentity, User, UserGroups
 import app.modules.db.user as user_sql
 import app.modules.roxy_wi_tools as roxy_wi_tools
 from app.modules.oidc.errors import OidcLoginError
+from app.modules.subscription.access import OIDC, require_feature
 
 
 def extract_claim(claims: dict, claim_name: str, default=None):
@@ -280,6 +281,7 @@ def _sync_group_memberships(provider, user, claims: dict, created: bool) -> None
 
 def complete_oidc_login(provider, claims: dict):
     """Resolve an OIDC identity and return local JWT parameters."""
+    require_feature(OIDC)
     database = User._meta.database
     with database.atomic():
         user, created = _resolve_user(provider, claims)

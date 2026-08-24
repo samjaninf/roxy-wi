@@ -18,6 +18,15 @@
                         {{lang.menu_links.overview.link}}
                     </a>
                 </li>
+				{% if g.user_params['role'] <= 3 %}
+				<li>
+					<a href="{{ url_for('change.index') }}" title="{{lang.menu_links.change_center.title}}"
+					   class="{% if request.url_rule.endpoint == 'change.index' %} menu-active{% endif %}">
+						<span class="fas fa-tasks" aria-hidden="true"></span>
+						{{lang.menu_links.change_center.link}}
+					</a>
+				</li>
+				{% endif %}
 				{% if '5' in g.user_params['user_services'] %}
 				{% if g.user_params['role'] <= 3 %}
 				{% endif %}

@@ -4,6 +4,7 @@ import app.modules.db.smon as smon_sql
 import app.modules.common.common as common
 import app.modules.server.server as server_mod
 import app.modules.roxywi.common as roxywi_common
+from app.modules.subscription.access import SMON_STATUS_PAGES, require_feature
 
 
 def _smon_agent():
@@ -244,6 +245,7 @@ def check_uptime(smon_id: int) -> int:
 
 
 def create_status_page(name: str, slug: str, desc: str, checks: list) -> str:
+    require_feature(SMON_STATUS_PAGES)
     group_id = roxywi_common.get_user_group(id=1)
 
     try:
@@ -257,6 +259,7 @@ def create_status_page(name: str, slug: str, desc: str, checks: list) -> str:
 
 
 def edit_status_page(page_id: int, name: str, slug: str, desc: str, checks: list, group_id: int) -> str:
+    require_feature(SMON_STATUS_PAGES)
     smon_sql.delete_status_page_checks(page_id, group_id)
 
     try:
@@ -268,6 +271,11 @@ def edit_status_page(page_id: int, name: str, slug: str, desc: str, checks: list
     pages = smon_sql.select_status_page_by_id(page_id, group_id)
 
     return render_template('ajax/smon/status_pages.html', pages=pages)
+
+
+def delete_status_page(page_id: int, group_id: int) -> None:
+    require_feature(SMON_STATUS_PAGES)
+    smon_sql.delete_status_page(page_id, group_id)
 
 
 def show_status_page(slug: str) -> str:

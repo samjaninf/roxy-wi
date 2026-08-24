@@ -81,6 +81,11 @@
             "title": "Gerenciar versões de configuração de Keepalived"
         },
     },
+    "change_center": {
+        "link": "Alterações",
+        "title": "Central de alterações",
+        "h2": "Central de alterações"
+    },
     "ssl": {
         "link": "SSL",
         "title": "Adicionar um proxy: Carregar certificados SSL"
@@ -121,6 +126,47 @@
     }
 }
 %}
+{% set change_center = {
+    "intro": "Valide, aprove, implante e reverta alterações de configuração em um só lugar.",
+    "premium_required": "O Change Center está disponível apenas com um plano Premium ativo.",
+    "view_pricing": "Ver preços e alterar o plano",
+    "empty": "Nenhuma alteração de configuração foi criada ainda.",
+    "created_from_editor": "O conteúdo atual do editor será salvo como rascunho. A configuração ativa não será alterada.",
+    "create": "Criar alteração",
+    "created": "Alteração criada",
+    "requires_approval": "Requer aprovação de outro administrador",
+    "details": "Detalhes da alteração",
+    "diff": "Diferenças da configuração",
+    "validation": "Resultado da validação",
+    "deployment": "Resultado da implantação",
+    "rollback_output": "Resultado da reversão",
+    "execution_mode": "Modo de execução",
+    "execution_mode_help": "Rolling implanta os nós um por vez; Parallel implanta até oito nós simultaneamente.",
+    "execution_modes": {"rolling": "Rolling (sequencial)", "parallel": "Parallel (paralelo)"},
+    "rollout": "Implantação do cluster",
+    "node": "Nó",
+    "role": "Função",
+    "result": "Resultado mais recente",
+    "roles": {"master": "Mestre", "slave": "Escravo", "standalone": "Independente"},
+    "approve": "Aprovar",
+    "deploy": "Implantar",
+    "recover": "Desbloquear",
+    "recovered": "Operação desbloqueada",
+    "operation_success": "Operação concluída",
+    "confirm_deploy": "Implantar esta alteração validada?",
+    "confirm_rollback": "Reverter esta alteração implantada?",
+    "confirm_cancel": "Cancelar esta alteração?",
+    "confirm_recover": "Desbloquear esta operação travada? A configuração remota não será alterada.",
+    "statuses": {
+        "pending": "Pendente", "skipped": "Ignorado", "deployment_failed": "Falha na implantação",
+        "draft": "Rascunho", "validating": "Validando", "validated": "Validada",
+        "validation_failed": "Falha na validação", "pending_approval": "Aguardando aprovação",
+        "approved": "Aprovada", "deploying": "Implantando", "deployment_interrupted": "Implantação interrompida", "deployed": "Implantada",
+        "failed": "Falha", "rolling_back": "Revertendo", "rolled_back": "Revertida",
+        "rollback_failed": "Falha na reversão", "auto_rolled_back": "Falha na implantação, reversão automática concluída",
+        "auto_rollback_failed": "Falha na implantação e na reversão automática", "cancelled": "Cancelada"
+    }
+} %}
 {% set services = {
     "hapservers_desc": "O Checker está moditorando o serviço. Quando o serviço mudar o estado, o Checker vou enviar uma notificação via Telegram, Slack, Email, Web",
     "last_edit": "Editado por último"

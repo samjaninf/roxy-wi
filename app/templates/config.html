@@ -89,12 +89,47 @@
 					<button type="submit" value="restart" name="" class="btn btn-default">{{lang.phrases.save_and_restart}}</button>
 					{% endif %}
 					<button type="submit" value="reload" name="save" class="btn btn-default">{{lang.phrases.save_and_reload}}</button>
+					<button type="button" id="open-change-dialog" class="btn btn-default">{{lang.change_center.create}}</button>
 					{% if service != 'keepalived' %}
 					<div class="alert alert-info" style="margin-left: -0px;"><b>{{lang.words.note|title()}}:</b> {{lang.phrases.master_slave}}</div>
                     <div class="alert alert-info" style="margin-left: -0px;">Read more about <a href="https://roxy-wi.org/description/hotkeys" target="_blank">Hotkeys</a></div>
 					{% endif %}
 				</p>
 			</form>
+			<div id="change-create-dialog" title="{{lang.change_center.create}}" style="display: none;">
+				<p>{{lang.change_center.created_from_editor}}</p>
+				<p>
+					<label for="change-title"><b>{{lang.words.name|title()}}</b></label><br>
+					<input id="change-title" type="text" maxlength="255" style="width: 100%;">
+				</p>
+				<p>
+					<label for="change-description"><b>{{lang.words.description|title()}}</b></label><br>
+					<textarea id="change-description" maxlength="4000" rows="4" style="width: 100%;"></textarea>
+				</p>
+				<p>
+					<label for="change-action"><b>{{lang.words.action|title()}}</b></label><br>
+					<select id="change-action">
+						<option value="save">{{lang.words.save|title()}}</option>
+						<option value="reload" selected>{{lang.words.reload|title()}}</option>
+						<option value="restart">{{lang.words.restart|title()}}</option>
+					</select>
+				</p>
+				<p>
+					<label for="change-execution-mode"><b>{{lang.change_center.execution_mode}}</b></label><br>
+					<select id="change-execution-mode">
+						<option value="rolling" selected>{{lang.change_center.execution_modes.rolling}}</option>
+						<option value="parallel">{{lang.change_center.execution_modes.parallel}}</option>
+					</select><br>
+					<small>{{lang.change_center.execution_mode_help}}</small>
+				</p>
+				<p>
+					<label><input id="change-requires-approval" type="checkbox"> {{lang.change_center.requires_approval}}</label>
+				</p>
+				<div id="change-editor-i18n" data-required="{{lang.errors.empty_name}}"
+					 data-created="{{lang.change_center.created}}" data-create="{{lang.change_center.create}}"
+					 data-cancel="{{lang.words.cancel|title()}}"></div>
+			</div>
+			<script src="{{ url_for('static', filename='js/change-editor.js') }}"></script>
 		{% endif %}
 	{% endif %}
 <script>

@@ -1,0 +1,182 @@
+.change-center-page {
+    margin: var(--indent);
+}
+
+.change-center-intro {
+    margin-bottom: 20px;
+    margin-left: 0;
+}
+
+.change-center-upgrade {
+    align-items: center;
+    display: flex;
+    gap: 8px;
+    padding: 18px;
+}
+
+.change-center-upgrade a {
+    font-weight: 600;
+}
+
+#change-center-table th,
+#change-center-table td {
+    padding: 10px 10px 10px var(--indent);
+}
+
+#change-center-table td {
+    vertical-align: middle;
+}
+
+.change-status {
+    border-radius: 3px;
+    display: inline-block;
+    font-weight: 600;
+    padding: 4px 8px;
+}
+
+.change-status-draft { background: #e2e3e5; color: #383d41; }
+.change-status-validating { background: #d1ecf1; color: #0c5460; }
+.change-status-validated { background: #cce5ff; color: #004085; }
+.change-status-validation_failed { background: #f8d7da; color: #721c24; }
+.change-status-pending_approval { background: #fff3cd; color: #856404; }
+.change-status-approved { background: #d4edda; color: #155724; }
+.change-status-deploying { background: #d6d8ff; color: #343a78; }
+.change-status-deployment_interrupted { background: #ffe5cc; color: #8a4500; }
+.change-status-deployed { background: #c3e6cb; color: #155724; }
+.change-status-failed { background: #f5c6cb; color: #721c24; }
+.change-status-auto_rolled_back { background: #ffeeba; color: #856404; }
+.change-status-auto_rollback_failed { background: #f1b0b7; color: #721c24; }
+.change-status-rolling_back { background: #fff0b3; color: #765a00; }
+.change-status-rolled_back { background: #bee5eb; color: #0c5460; }
+.change-status-rollback_failed { background: #f8d7da; color: #721c24; }
+.change-status-cancelled { background: #d6d8db; color: #383d41; }
+.change-status-pending { background: #e2e3e5; color: #383d41; }
+.change-status-skipped { background: #e9ecef; color: #6c757d; }
+.change-status-deployment_failed { background: #f5c6cb; color: #721c24; }
+
+.change-actions button {
+    margin-right: 4px;
+}
+
+#change-center .change-action-details,
+#change-center .change-action-validate {
+    background-color: var(--color-blue) !important;
+    color: var(--color-white) !important;
+}
+
+#change-center .change-action-approve,
+#change-center .change-action-deploy,
+button.ui-button.change-confirm-deploy {
+    background-color: var(--green-color) !important;
+    color: var(--color-white) !important;
+}
+
+#change-center .change-action-rollback,
+button.ui-button.change-confirm-rollback,
+#change-center .change-action-recover,
+button.ui-button.change-confirm-recover {
+    background-color: var(--color-wanring) !important;
+    color: var(--color-white) !important;
+}
+
+#change-center .change-action-cancel,
+button.ui-button.change-confirm-cancel {
+    background-color: var(--red-color) !important;
+    color: var(--color-white) !important;
+}
+
+#change-center .change-actions .ui-button:hover,
+button.ui-button.change-confirm-button:hover {
+    filter: brightness(0.92);
+}
+
+.change-confirm-message {
+    align-items: center;
+    display: flex;
+    gap: 10px;
+    line-height: 1.5;
+    margin: 10px 0;
+}
+
+.change-confirm-message .fas {
+    color: var(--color-wanring);
+    font-size: 1.5em;
+}
+
+#change-details-dialog pre,
+.change-diff {
+    background: #f7f7f7;
+    border: 1px solid #ddd;
+    max-height: 260px;
+    overflow: auto;
+    padding: 10px;
+    white-space: pre-wrap;
+}
+
+.change-rollout {
+    border: 1px solid #ddd;
+    max-height: 300px;
+    overflow: auto;
+}
+
+.change-rollout table {
+    border-collapse: collapse;
+    width: 100%;
+}
+
+.change-rollout th,
+.change-rollout td {
+    border-bottom: 1px solid #e3e3e3;
+    padding: 8px 10px;
+    text-align: left;
+    vertical-align: top;
+}
+
+.change-rollout th {
+    background: #f1f1f1;
+    position: sticky;
+    top: 0;
+}
+
+.change-rollout pre {
+    border: 0 !important;
+    margin: 0;
+    max-height: 100px !important;
+    padding: 0 !important;
+}
+
+.change-diff {
+    color: #333;
+    font-family: monospace;
+    padding: 0;
+    white-space: pre;
+}
+
+.change-diff-line {
+    border-left: 4px solid transparent;
+    display: block;
+    min-height: 1.35em;
+    padding: 1px 10px;
+}
+
+.change-diff-added {
+    background-color: rgba(46, 160, 67, 0.18);
+    border-left-color: #2da44e;
+}
+
+.change-diff-removed {
+    background-color: rgba(207, 34, 46, 0.16);
+    border-left-color: #cf222e;
+}
+
+.change-diff-hunk {
+    background-color: rgba(9, 105, 218, 0.13);
+    border-left-color: #0969da;
+    color: #0550ae;
+}
+
+.change-diff-header {
+    background-color: rgba(110, 118, 129, 0.12);
+    color: #57606a;
+    font-weight: 600;
+}

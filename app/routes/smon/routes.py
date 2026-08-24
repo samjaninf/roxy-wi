@@ -13,6 +13,7 @@ import app.modules.common.common as common
 import app.modules.roxywi.common as roxywi_common
 import app.modules.tools.smon as smon_mod
 import app.modules.tools.common as tools_common
+from app.modules.subscription.access import SMON_STATUS_PAGES, feature_required
 
 
 @bp.route('/dashboard')
@@ -224,6 +225,7 @@ def get_check(smon_id, check_type_id):
 @bp.route('/status-page', methods=['GET', 'POST', 'DELETE', 'PUT'])
 @jwt_required()
 @get_user_params()
+@feature_required(SMON_STATUS_PAGES, methods=('POST', 'PUT', 'DELETE'))
 def status_page():
     """
        This function handles the '/status-page' route with methods GET, POST, DELETE, and PUT.
@@ -299,7 +301,7 @@ def status_page():
     elif request.method == 'DELETE':
         page_id = int(request.form.get('page_id'))
         try:
-            smon_sql.delete_status_page(page_id, g.user_params['group_id'])
+            smon_mod.delete_status_page(page_id, g.user_params['group_id'])
         except Exception as e:
             return f'{e}'
         else:
@@ -309,6 +311,7 @@ def status_page():
 @bp.route('/status/checks/<int:page_id>')
 @jwt_required()
 @get_user_params()
+@feature_required(SMON_STATUS_PAGES)
 def get_checks(page_id):
     """
     :param page_id: The ID of the page for which to fetch the checks.

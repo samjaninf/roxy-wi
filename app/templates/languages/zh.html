@@ -81,6 +81,11 @@
             "title": "管理 Keepalived 配置版本"
         },
     },
+    "change_center": {
+        "link": "变更",
+        "title": "变更中心",
+        "h2": "变更中心"
+    },
     "ssl": {
         "link": "SSL",
         "title": "添加代理：上传 SSL 证书"
@@ -121,6 +126,47 @@
     }
 }
 %}
+{% set change_center = {
+    "intro": "在一个位置验证、审批、部署和回滚配置变更。",
+    "premium_required": "Change Center 仅适用于有效的 Premium 套餐。",
+    "view_pricing": "查看价格并更改套餐",
+    "empty": "尚未创建配置变更。",
+    "created_from_editor": "当前编辑器内容将保存为草稿，不会修改正在运行的配置。",
+    "create": "创建变更",
+    "created": "变更已创建",
+    "requires_approval": "需要另一位管理员审批",
+    "details": "变更详情",
+    "diff": "配置差异",
+    "validation": "验证结果",
+    "deployment": "部署结果",
+    "rollback_output": "回滚结果",
+    "execution_mode": "执行模式",
+    "execution_mode_help": "Rolling 逐个部署节点；Parallel 最多同时部署八个节点。",
+    "execution_modes": {"rolling": "Rolling（顺序）", "parallel": "Parallel（并行）"},
+    "rollout": "集群发布",
+    "node": "节点",
+    "role": "角色",
+    "result": "最新结果",
+    "roles": {"master": "主节点", "slave": "从节点", "standalone": "独立节点"},
+    "approve": "批准",
+    "deploy": "部署",
+    "recover": "解锁",
+    "recovered": "操作已解锁",
+    "operation_success": "操作完成",
+    "confirm_deploy": "部署此已验证的变更？",
+    "confirm_rollback": "回滚此已部署的变更？",
+    "confirm_cancel": "取消此变更？",
+    "confirm_recover": "解锁此停滞的操作？远程配置不会被更改。",
+    "statuses": {
+        "pending": "等待中", "skipped": "已跳过", "deployment_failed": "部署失败",
+        "draft": "草稿", "validating": "正在验证", "validated": "已验证",
+        "validation_failed": "验证失败", "pending_approval": "等待审批",
+        "approved": "已批准", "deploying": "正在部署", "deployment_interrupted": "部署已中断", "deployed": "已部署",
+        "failed": "失败", "rolling_back": "正在回滚", "rolled_back": "已回滚",
+        "rollback_failed": "回滚失败", "auto_rolled_back": "部署失败，已自动回滚",
+        "auto_rollback_failed": "部署和自动回滚均失败", "cancelled": "已取消"
+    }
+} %}
 {% set services = {
     "hapservers_desc": "检测器监控服务。如果服务状态更改，检测器将通过 Telegram、Slack、电子邮件或 Web 发送警报。",
     "last_edit": "上次编辑"

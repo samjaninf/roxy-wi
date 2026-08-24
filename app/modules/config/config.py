@@ -2,6 +2,7 @@ import os
 import subprocess
 from difflib import unified_diff
 from pathlib import Path
+from shlex import quote
 from typing import Any
 
 from flask import render_template, g
@@ -101,6 +102,68 @@ def upload(server_ip: str, path: str, file: str) -> None:
 		roxywi_common.handle_exceptions(e, 'Roxy-WI server', f'Cannot upload {file} to {path} to server: {server_ip}')
 
 
+def validate_candidate_config(server_ip: str, cfg: str, service: str, config_file_name: str = None) -> str:
+	"""Validate a candidate without leaving it as the active on-disk configuration."""
+	server_id = server_sql.get_server_by_ip(server_ip).server_id
+	config_path = config_file_name
+	if config_path and config_path != 'undefined':
+		config_path = _replace_config_path_to_correct(config_path)
+	if service in ('haproxy', 'keepalived'):
+		config_path = sql.get_setting(f'{service}_config_path')
+	common.check_is_conf(config_path)
+
+	tmp_file = (
+		f"{sql.get_setting('tmp_config_path')}/{get_date.return_date('config')}."
+		f"candidate.{config_common.get_file_format(service)}"
+	)
+	try:
+		subprocess.run(['dos2unix', '-q', cfg], check=False)
+	except OSError:
+		# dos2unix is optional; the actual service validator is authoritative.
+		pass
+	upload(server_ip, tmp_file, cfg)
+
+	is_dockerized = service_sql.select_service_setting(server_id, service, 'dockerized')
+	container_name = sql.get_setting(f'{service}_container_name')
+	if is_dockerized == '1':
+		checks = {
+			'haproxy': f'sudo docker exec {quote(container_name)} haproxy -c -f {quote(config_path)}',
+			'nginx': f'sudo docker exec {quote(container_name)} nginx -t',
+			'apache': f'sudo docker exec {quote(container_name)} apachectl -t',
+			'keepalived': f'sudo docker exec {quote(container_name)} keepalived -t -f {quote(config_path)}',
+		}
+	else:
+		checks = {
+			'haproxy': f'sudo haproxy -c -f {quote(tmp_file)}',
+			'nginx': 'sudo nginx -t',
+			'apache': 'sudo apachectl -t',
+			'keepalived': f'sudo keepalived -t -f {quote(tmp_file)}',
+		}
+
+	check_command = checks[service]
+	# NGINX and Apache validate the complete configuration tree. Dockerized
+	# services also need the candidate at the mounted production path. Preserve
+	# the original and restore it before returning, including on failure.
+	stage_candidate = service in ('nginx', 'apache') or is_dockerized == '1'
+	if stage_candidate:
+		backup_file = f'{tmp_file}.before'
+		command = (
+			f'sudo cp -p {quote(config_path)} {quote(backup_file)} && '
+			f'sudo mv -f {quote(tmp_file)} {quote(config_path)} && {check_command}; '
+			f'validation_rc=$?; sudo mv -f {quote(backup_file)} {quote(config_path)}; exit $validation_rc'
+		)
+	else:
+		command = (
+			f'{check_command}; validation_rc=$?; sudo rm -f {quote(tmp_file)}; exit $validation_rc'
+		)
+
+	try:
+		output = server_mod.ssh_command(server_ip, command, rc=1)
+	except Exception as e:
+		roxywi_common.handle_exceptions(e, server_ip, f'Cannot validate {service} candidate configuration')
+	return str(output or '').strip() or f'{service.title()} configuration is valid'
+
+
 def _generate_command(service: str, server_id: int, just_save: str, config_path: str, tmp_file: str, cfg: str, server_ip: str) -> str:
 	"""
 	:param service: The name of the service.
@@ -153,7 +216,7 @@ def _generate_command(service: str, server_id: int, just_save: str, config_path:
 	return commands
 
 
-def _create_config_version(server_id: int, server_ip: str, service: str, config_path: str, user_id: int, cfg: str, old_cfg: str, tmp_file: str) -> None:
+def _prepare_config_version_diff(server_ip: str, service: str, config_path: str, cfg: str, old_cfg: str, tmp_file: str) -> str:
 	"""
 	Create a new version of the configuration file.
 
@@ -186,10 +249,24 @@ def _create_config_version(server_id: int, server_ip: str, service: str, config_
 	except Exception as e:
 		roxywi_common.logging('Roxy-WI server', f'error: Cannot create diff config version: {e}')
 
+	return diff
+
+
+def _create_config_version(
+	server_id: int, service: str, config_path: str, user_id: int, cfg: str, diff: str, message: str = None
+) -> None:
 	try:
-		config_sql.insert_config_version(server_id, user_id, service, cfg, config_path, diff)
+		config_sql.insert_config_version(server_id, user_id, service, cfg, config_path, diff, message=message)
 	except Exception as e:
 		roxywi_common.logging('Roxy-WI server', f'error: Cannot insert config version: {e}')
+
+
+def normalize_config_file(cfg: str) -> None:
+	"""Normalize a local candidate once before it is uploaded to one or more nodes."""
+	try:
+		subprocess.run(['dos2unix', '-q', cfg], check=False)
+	except OSError as e:
+		roxywi_common.handle_exceptions(e, 'Roxy-WI server', 'There is no dos2unix')
 
 
 def upload_and_restart(server_ip: str, cfg: str, just_save: str, service: str, **kwargs):
@@ -203,7 +280,6 @@ def upload_and_restart(server_ip: str, cfg: str, just_save: str, service: str, *
 	:return: Error message or service title
 
 	"""
-	user = user_sql.get_user_id(g.user_params['user_id'])
 	config_path = kwargs.get('config_file_name')
 	server_id = server_sql.get_server_by_ip(server_ip).server_id
 	tmp_file = f"{sql.get_setting('tmp_config_path')}/{get_date.return_date('config')}.{config_common.get_file_format(service)}"
@@ -216,19 +292,30 @@ def upload_and_restart(server_ip: str, cfg: str, just_save: str, service: str, *
 
 	common.check_is_conf(config_path)
 
-	try:
-		subprocess.run(['dos2unix', '-q', cfg], check=False)
-	except OSError as e:
-		roxywi_common.handle_exceptions(e, 'Roxy-WI server', 'There is no dos2unix')
+	if kwargs.get('normalize_config', True):
+		normalize_config_file(cfg)
 
 	try:
 		upload(server_ip, tmp_file, cfg)
 	except Exception as e:
 		roxywi_common.handle_exceptions(e, 'Roxy-WI server', 'Cannot upload config')
 
-	# If master then save a version of config in a new way
-	if not kwargs.get('slave') and service != 'waf':
-		_create_config_version(server_id, server_ip, service, config_path, user.user_id, cfg, kwargs.get('oldcfg'), tmp_file)
+	should_record_version = (
+		not kwargs.get('slave')
+		and kwargs.get('record_version', True)
+		and service != 'waf'
+		and just_save != 'test'
+	)
+	version_diff = ''
+	version_user = None
+	if should_record_version:
+		user_id = kwargs.get('user_id')
+		if user_id is None:
+			user_id = g.user_params['user_id']
+		version_user = user_sql.get_user_id(user_id)
+		version_diff = _prepare_config_version_diff(
+			server_ip, service, config_path, cfg, kwargs.get('oldcfg'), tmp_file
+		)
 
 	try:
 		commands = _generate_command(service, server_id, just_save, config_path, tmp_file, cfg, server_ip)
@@ -236,9 +323,17 @@ def upload_and_restart(server_ip: str, cfg: str, just_save: str, service: str, *
 		roxywi_common.handle_exceptions(e, 'Roxy-WI server', f'Cannot generate command for service {service}')
 
 	try:
-		error = server_mod.ssh_command(server_ip, commands)
+		error = server_mod.ssh_command(server_ip, commands, rc=1)
 	except Exception as e:
 		roxywi_common.handle_exceptions(e, 'Roxy-WI server', f'Cannot {just_save} {service}')
+
+	# A saved version represents a successful remote operation, not merely an
+	# upload attempt. Validation-only requests are intentionally not versions.
+	if should_record_version:
+		_create_config_version(
+			server_id, service, config_path, version_user.user_id, cfg, version_diff,
+			message=kwargs.get('version_message')
+		)
 
 	if just_save in ('reload', 'restart'):
 		roxywi_common.logging(server_ip, f'Service {service.title()} has been {just_save}ed', keep_history=1, service=service)
@@ -275,14 +370,16 @@ def master_slave_upload_and_restart(server_ip: str, cfg: str, just_save: str, se
 		if master[0] is not None:
 			try:
 				slv_output = upload_and_restart(
-					master[0], cfg, just_save, service, waf=waf, config_file_name=config_file_name, slave=1
+					master[0], cfg, just_save, service, waf=waf, config_file_name=config_file_name, slave=1,
+					record_version=kwargs.get('record_version', True)
 				)
 				slave_output += f'<br>slave_server:\n{slv_output}'
 			except Exception as e:
 				slave_output += f'<br>slave_server:\n error: {e}'
 	try:
 		output = upload_and_restart(
-			server_ip, cfg, just_save, service, waf=waf, config_file_name=config_file_name, oldcfg=old_cfg
+			server_ip, cfg, just_save, service, waf=waf, config_file_name=config_file_name, oldcfg=old_cfg,
+			record_version=kwargs.get('record_version', True), version_message=kwargs.get('version_message')
 		)
 	except Exception as e:
 		output = f'error: {e}'

@@ -81,6 +81,11 @@
             "title": "Working with Keepalived Configuration Versions"
         },
     },
+    "change_center": {
+        "link": "Changes",
+        "title": "Change Center",
+        "h2": "Change Center"
+    },
     "ssl": {
         "link": "SSL",
         "title": "Add proxy: Upload SSL certificates"
@@ -121,6 +126,47 @@
     }
 }
 %}
+{% set change_center = {
+    "intro": "Validate, approve, deploy and roll back configuration changes from one place.",
+    "premium_required": "Change Center is available only with an active Premium plan.",
+    "view_pricing": "View pricing and change plan",
+    "empty": "No configuration changes have been created yet.",
+    "created_from_editor": "The current editor contents will be saved as a draft. The running configuration will not be changed.",
+    "create": "Create change",
+    "created": "Change created",
+    "requires_approval": "Requires approval by another administrator",
+    "details": "Change details",
+    "diff": "Configuration diff",
+    "validation": "Validation result",
+    "deployment": "Deployment result",
+    "rollback_output": "Rollback result",
+    "execution_mode": "Execution mode",
+    "execution_mode_help": "Rolling deploys nodes one at a time; Parallel deploys up to eight nodes concurrently.",
+    "execution_modes": {"rolling": "Rolling (sequential)", "parallel": "Parallel"},
+    "rollout": "Cluster rollout",
+    "node": "Node",
+    "role": "Role",
+    "result": "Latest result",
+    "roles": {"master": "Master", "slave": "Slave", "standalone": "Standalone"},
+    "approve": "Approve",
+    "deploy": "Deploy",
+    "recover": "Recover",
+    "recovered": "Operation unlocked",
+    "operation_success": "Operation completed",
+    "confirm_deploy": "Deploy this validated change?",
+    "confirm_rollback": "Roll back this deployed change?",
+    "confirm_cancel": "Cancel this change?",
+    "confirm_recover": "Unlock this stale operation? The remote configuration will not be changed.",
+    "statuses": {
+        "pending": "Pending", "skipped": "Skipped", "deployment_failed": "Deployment failed",
+        "draft": "Draft", "validating": "Validating", "validated": "Validated",
+        "validation_failed": "Validation failed", "pending_approval": "Pending approval",
+        "approved": "Approved", "deploying": "Deploying", "deployment_interrupted": "Deployment interrupted", "deployed": "Deployed",
+        "failed": "Failed", "rolling_back": "Rolling back", "rolled_back": "Rolled back",
+        "rollback_failed": "Rollback failed", "auto_rolled_back": "Deployment failed, automatically rolled back",
+        "auto_rollback_failed": "Deployment and automatic rollback failed", "cancelled": "Cancelled"
+    }
+} %}
 {% set services = {
     "hapservers_desc": "Checker monitors the service. If the service changes its status, Checker will alert via Telegram, Slack, Email, Web",
     "last_edit": "Last edit"

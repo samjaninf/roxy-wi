@@ -95,6 +95,28 @@ def test_change_api_lists_only_permitted_services(client, monkeypatch, change_ap
     assert response.get_json()['data'] == [{'id': 1, 'service': 'haproxy'}]
 
 
+def test_change_api_lists_sanitized_notification_destinations(
+    client, monkeypatch, change_api
+):
+    _user_params, headers = change_api
+    destinations = [{
+        'channel': 'telegram', 'channel_label': 'Telegram',
+        'recipient_id': 9, 'label': 'Operations', 'destination': 'Operations',
+    }]
+    monkeypatch.setattr(
+        change_routes.change_automation,
+        'list_notification_destinations',
+        lambda group_id: destinations if group_id == 1 else [],
+    )
+
+    response = client.get(
+        '/changes/api/notification-destinations', headers=headers
+    )
+
+    assert response.status_code == 200
+    assert response.get_json()['data'] == destinations
+
+
 def test_change_api_rejects_unsupported_service_filter(client, change_api):
     _user_params, headers = change_api
 
@@ -221,7 +243,10 @@ def test_change_api_maps_update_conflict(client, monkeypatch, change_api):
     assert response.get_json()['error'] == 'Already deployed'
 
 
-@pytest.mark.parametrize('action', ('validate', 'deploy', 'rollback', 'cancel', 'recover'))
+@pytest.mark.parametrize(
+    'action',
+    ('validate', 'deploy', 'rollback', 'cancel', 'recover', 'pause', 'resume', 'promote'),
+)
 def test_change_api_exposes_workflow_actions(client, monkeypatch, change_api, action):
     _user_params, headers = change_api
     change = _change(8)
@@ -250,6 +275,55 @@ def test_change_api_requires_admin_for_approval(client, monkeypatch, change_api)
     response = client.post('/changes/api/1/approve', headers=headers)
 
     assert response.status_code == 403
+
+
+def test_change_api_previews_rollout_topology(client, monkeypatch, change_api):
+    _user_params, headers = change_api
+    monkeypatch.setattr(
+        change_routes.change_service,
+        'rollout_preview',
+        lambda server_id, service, group_id: [{
+            'server_id': int(server_id), 'service': service, 'group_id': group_id,
+        }],
+    )
+
+    response = client.get(
+        '/changes/api/rollout-preview?server_id=10&service=haproxy',
+        headers=headers,
+    )
+
+    assert response.status_code == 200
+    assert response.get_json()['data'] == [
+        {'server_id': 10, 'service': 'haproxy', 'group_id': 1}
+    ]
+
+
+@pytest.mark.parametrize('action', ('retry', 'rollback', 'exclude', 'include'))
+def test_change_api_exposes_per_target_actions(
+    client, monkeypatch, change_api, action
+):
+    _user_params, headers = change_api
+    change = _change(12)
+    monkeypatch.setattr(change_routes.change_sql, 'get_change', lambda _change_id: change)
+    monkeypatch.setattr(
+        change_routes.change_service,
+        f'{action}_target' if action in ('retry', 'rollback', 'exclude', 'include') else action,
+        lambda *_args, **_kwargs: change,
+    )
+    monkeypatch.setattr(
+        change_routes.change_service,
+        'serialize_change',
+        lambda item: {'id': item.id},
+    )
+
+    response = client.post(
+        f'/changes/api/12/targets/22/{action}',
+        headers=headers,
+        json={} if action == 'exclude' else None,
+    )
+
+    assert response.status_code == 200
+    assert response.get_json()['data']['id'] == 12
 
 
 def test_change_api_allows_distinct_admin_to_approve(client, monkeypatch, change_api):
@@ -302,3 +376,158 @@ def test_change_api_hides_unexpected_exception_behind_failed_response(
         'status': 'failed',
         'error': 'Internal server error',
     }
+
+
+@pytest.mark.parametrize(
+    ('path', 'handler_name'),
+    (
+        ('schedule/cancel', 'cancel_schedule'),
+        ('drift', 'check_change_drift'),
+    ),
+)
+def test_change_api_exposes_automation_actions(
+    client, monkeypatch, change_api, path, handler_name
+):
+    user_params, headers = change_api
+    change = _change(31)
+    calls = []
+    monkeypatch.setattr(change_routes.change_sql, 'get_change', lambda _change_id: change)
+    monkeypatch.setattr(
+        change_routes.change_automation,
+        handler_name,
+        lambda change_id, group_id, actor_id: calls.append(
+            (change_id, group_id, actor_id)
+        ) or change,
+    )
+    monkeypatch.setattr(
+        change_routes.change_service, 'serialize_change', lambda item: {'id': item.id}
+    )
+
+    response = client.post(f'/changes/api/31/{path}', headers=headers)
+
+    assert response.status_code == 200
+    assert calls == [(31, 1, user_params['user_id'])]
+
+
+def test_change_api_schedules_with_maintenance_window(
+    client, monkeypatch, change_api
+):
+    user_params, headers = change_api
+    change = _change(32)
+    captured = {}
+    monkeypatch.setattr(change_routes.change_sql, 'get_change', lambda _change_id: change)
+
+    def schedule(change_id, body, group_id, actor_id):
+        captured.update(
+            change_id=change_id,
+            scheduled_at=body.scheduled_at,
+            window_end=body.maintenance_window_end,
+            group_id=group_id,
+            actor_id=actor_id,
+        )
+        return change
+
+    monkeypatch.setattr(change_routes.change_automation, 'schedule_change', schedule)
+    monkeypatch.setattr(
+        change_routes.change_service, 'serialize_change', lambda item: {'id': item.id}
+    )
+
+    response = client.post(
+        '/changes/api/32/schedule',
+        headers=headers,
+        json={
+            'scheduled_at': '2099-01-01T10:00:00Z',
+            'maintenance_window_end': '2099-01-01T11:00:00Z',
+        },
+    )
+
+    assert response.status_code == 200
+    assert captured['change_id'] == 32
+    assert captured['group_id'] == 1
+    assert captured['actor_id'] == user_params['user_id']
+    assert captured['window_end'] > captured['scheduled_at']
+
+
+def test_change_api_exposes_filtered_audit_statistics_and_report(
+    client, monkeypatch, change_api
+):
+    _user_params, headers = change_api
+    change = _change(33)
+    captured = {}
+    monkeypatch.setattr(change_routes.change_sql, 'get_change', lambda _change_id: change)
+    monkeypatch.setattr(
+        change_routes.change_automation,
+        'list_audit_events',
+        lambda group_id, query, **kwargs: captured.update(
+            group_id=group_id, service=query.service, change_id=kwargs.get('change_id')
+        ) or [{'id': 1, 'service': 'haproxy'}],
+    )
+    monkeypatch.setattr(
+        change_routes.change_automation,
+        'deployment_statistics',
+        lambda group_id, days, **_kwargs: {'group_id': group_id, 'period_days': days},
+    )
+    monkeypatch.setattr(
+        change_routes.change_automation,
+        'build_change_report',
+        lambda _change, **kwargs: 'a,b\n1,2\n' if kwargs.get('as_csv') else {'id': 33},
+    )
+
+    audit = client.get('/changes/api/audit?service=haproxy&q=node', headers=headers)
+    timeline = client.get('/changes/api/33/events', headers=headers)
+    statistics = client.get('/changes/api/statistics?days=90', headers=headers)
+    report = client.get('/changes/api/33/report?format=csv', headers=headers)
+
+    assert audit.status_code == 200
+    assert timeline.status_code == 200
+    assert statistics.get_json()['data']['period_days'] == 90
+    assert report.mimetype == 'text/csv'
+    assert 'change-33-report.csv' in report.headers['Content-Disposition']
+    assert captured['change_id'] == 33
+
+
+def test_change_api_manages_webhooks_without_exposing_secret(
+    client, monkeypatch, change_api
+):
+    _user_params, headers = change_api
+    webhook = SimpleNamespace(id=7)
+    monkeypatch.setattr(change_routes.change_sql, 'list_webhooks', lambda _group_id: [webhook])
+    monkeypatch.setattr(change_routes.change_automation, 'create_webhook', lambda *_args: webhook)
+    monkeypatch.setattr(change_routes.change_automation, 'update_webhook', lambda *_args: webhook)
+    monkeypatch.setattr(change_routes.change_automation, 'delete_webhook', lambda *_args: None)
+    monkeypatch.setattr(change_routes.change_automation, 'queue_webhook_test', lambda *_args: webhook)
+    monkeypatch.setattr(
+        change_routes.change_automation,
+        'serialize_webhook',
+        lambda item: {'id': item.id, 'secret_configured': True},
+    )
+
+    listed = client.get('/changes/api/webhooks', headers=headers)
+    created = client.post(
+        '/changes/api/webhooks',
+        headers=headers,
+        json={'name': 'automation', 'url': 'https://hooks.example.test/roxy-wi'},
+    )
+    updated = client.put(
+        '/changes/api/webhooks/7', headers=headers, json={'enabled': False}
+    )
+    tested = client.post('/changes/api/webhooks/7/test', headers=headers)
+    deleted = client.delete('/changes/api/webhooks/7', headers=headers)
+
+    assert listed.status_code == 200
+    assert created.status_code == 201
+    assert updated.status_code == 200
+    assert tested.status_code == 200
+    assert deleted.status_code == 200
+    assert 'secret' not in created.get_json()['data']
+
+
+def test_change_api_requires_admin_to_manage_webhooks(
+    client, change_api
+):
+    user_params, headers = change_api
+    user_params['role'] = 3
+
+    response = client.get('/changes/api/webhooks', headers=headers)
+
+    assert response.status_code == 403

@@ -4,7 +4,9 @@ import os
 import threading
 
 
-os.environ.setdefault('ROXYWI_SCHEDULER_ENABLED', '1')
+# This entry point is the dedicated scheduler by definition. Override a stale
+# service-level value instead of silently starting a process without any jobs.
+os.environ['ROXYWI_SCHEDULER_ENABLED'] = '1'
 
 from app import scheduler  # noqa: E402
 

@@ -89,7 +89,13 @@ def nettools():
 @bp.post('/nettools/<check>')
 @validate(body=NettoolsRequest)
 @jwt_required()
+@get_user_params()
 def nettools_check(check, body: NettoolsRequest):
+    if check in ('icmp', 'tcp', 'dns'):
+        # Authorize the selected execution host before Nettools can resolve
+        # stored SSH credentials or open a connection to it.
+        roxywi_common.require_request_server_access()
+
     if check == 'icmp':
         try:
             return nettools_mod.ping_from_server(body.server_from, str(body.server_to), body.action)

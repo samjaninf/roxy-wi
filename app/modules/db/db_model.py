@@ -53,6 +53,13 @@ class BaseModel(Model):
         database = connect()
 
 
+def close_database_connection() -> None:
+    """Close the database connection owned by the current worker thread."""
+    database = BaseModel._meta.database
+    if not database.is_closed():
+        database.close()
+
+
 class User(BaseModel):
     user_id = AutoField(column_name='id')
     username = CharField(constraints=[SQL('UNIQUE')])
@@ -590,6 +597,23 @@ class ConfigChange(BaseModel):
     service = CharField(index=True)
     action = CharField()
     execution_mode = CharField(constraints=[SQL("DEFAULT 'rolling'")])
+    batch_size = IntegerField(default=0, constraints=[SQL('DEFAULT 0')])
+    max_parallel = IntegerField(default=8, constraints=[SQL('DEFAULT 8')])
+    manual_promotion = IntegerField(default=0, constraints=[SQL('DEFAULT 0')])
+    health_check_mode = CharField(default='full', constraints=[SQL("DEFAULT 'full'")])
+    health_check_retries = IntegerField(default=1, constraints=[SQL('DEFAULT 1')])
+    health_check_interval = IntegerField(default=0, constraints=[SQL('DEFAULT 0')])
+    pause_requested = IntegerField(default=0, constraints=[SQL('DEFAULT 0')])
+    scheduled_at = DateTimeField(null=True, index=True)
+    maintenance_window_end = DateTimeField(null=True)
+    schedule_base_status = CharField(null=True)
+    notification_channels = TextField(default='[]', constraints=[SQL("DEFAULT '[]'")])
+    notification_destinations = TextField(default='[]', constraints=[SQL("DEFAULT '[]'")])
+    drift_status = CharField(default='unknown', constraints=[SQL("DEFAULT 'unknown'")])
+    drift_checked_at = DateTimeField(null=True)
+    drift_diff = TextField(null=True)
+    started_at = DateTimeField(null=True)
+    finished_at = DateTimeField(null=True)
     status = CharField(default='draft', index=True)
     title = CharField()
     description = TextField(null=True)
@@ -619,11 +643,19 @@ class ConfigChangeTarget(BaseModel):
     server_name = CharField()
     role = CharField()
     position = IntegerField()
+    batch = IntegerField(default=0, constraints=[SQL('DEFAULT 0')])
+    is_canary = IntegerField(default=0, constraints=[SQL('DEFAULT 0')])
+    excluded = IntegerField(default=0, constraints=[SQL('DEFAULT 0')])
+    excluded_reason = TextField(null=True)
     status = CharField(default='pending', index=True)
     rollback_path = CharField()
     validation_output = TextField(null=True)
     deployment_output = TextField(null=True)
+    health_output = TextField(null=True)
     rollback_output = TextField(null=True)
+    drift_status = CharField(default='unknown', constraints=[SQL("DEFAULT 'unknown'")])
+    drift_checked_at = DateTimeField(null=True)
+    drift_diff = TextField(null=True)
     updated_at = DateTimeField(default=datetime.now)
     deployed_at = DateTimeField(null=True)
 
@@ -632,6 +664,84 @@ class ConfigChangeTarget(BaseModel):
         indexes = (
             (('change', 'server_id'), True),
             (('change', 'position'), True),
+        )
+
+
+class ConfigChangeEvent(BaseModel):
+    """Append-only operational timeline for a Change Center workflow."""
+
+    id = AutoField()
+    change = ForeignKeyField(
+        ConfigChange, backref='events', column_name='change_id', on_delete='CASCADE'
+    )
+    target = ForeignKeyField(
+        ConfigChangeTarget, backref='events', column_name='target_id', null=True,
+        on_delete='SET NULL',
+    )
+    event_type = CharField(index=True)
+    status = CharField(null=True, index=True)
+    message = CharField()
+    details = TextField(null=True)
+    actor_id = IntegerField(null=True, index=True)
+    created_at = DateTimeField(default=datetime.now, index=True)
+
+    class Meta:
+        table_name = 'config_change_events'
+        indexes = (
+            (('change', 'created_at'), False),
+            (('event_type', 'created_at'), False),
+        )
+
+
+class ConfigChangeWebhook(BaseModel):
+    """Group-scoped outbound webhook used by Change Center automation."""
+
+    id = AutoField()
+    group_id = IntegerField(index=True)
+    name = CharField()
+    url = TextField()
+    secret_encrypted = TextField(null=True)
+    events = TextField(default='[]', constraints=[SQL("DEFAULT '[]'")])
+    enabled = IntegerField(default=1, constraints=[SQL('DEFAULT 1')])
+    verify_tls = IntegerField(default=1, constraints=[SQL('DEFAULT 1')])
+    created_by = IntegerField(null=True)
+    created_at = DateTimeField(default=datetime.now)
+    updated_at = DateTimeField(default=datetime.now)
+
+    class Meta:
+        table_name = 'config_change_webhooks'
+        constraints = [SQL('UNIQUE (group_id, name)')]
+
+
+class ConfigChangeDelivery(BaseModel):
+    """Retryable outbox for notifications and external webhooks."""
+
+    id = AutoField()
+    change = ForeignKeyField(
+        ConfigChange, backref='deliveries', column_name='change_id', null=True,
+        on_delete='SET NULL',
+    )
+    event = ForeignKeyField(
+        ConfigChangeEvent, backref='deliveries', column_name='event_id', null=True,
+        on_delete='SET NULL',
+    )
+    destination_type = CharField(index=True)
+    destination_id = IntegerField(null=True)
+    payload = TextField()
+    status = CharField(default='pending', index=True)
+    attempts = IntegerField(default=0, constraints=[SQL('DEFAULT 0')])
+    next_attempt_at = DateTimeField(default=datetime.now, index=True)
+    response_code = IntegerField(null=True)
+    error = TextField(null=True)
+    created_at = DateTimeField(default=datetime.now)
+    updated_at = DateTimeField(default=datetime.now)
+    delivered_at = DateTimeField(null=True)
+
+    class Meta:
+        table_name = 'config_change_deliveries'
+        indexes = (
+            (('status', 'next_attempt_at'), False),
+            (('change', 'created_at'), False),
         )
 
 
@@ -992,7 +1102,8 @@ def create_tables():
     with conn:
         conn.create_tables(
             [User, Server, Role, Telegram, Slack, Groups, UserGroups, OidcProvider, OidcIdentity, OidcGroupMapping,
-             RevokedToken, ConfigVersion, ConfigChange, ConfigChangeTarget, Setting, RoxyTool, Alerts,
+             RevokedToken, ConfigVersion, ConfigChange, ConfigChangeTarget, ConfigChangeEvent,
+             ConfigChangeWebhook, ConfigChangeDelivery, Setting, RoxyTool, Alerts,
              Cred, Backup, Metrics, WafMetrics, Version, Option, SavedServer, Waf, ActionHistory, PortScannerSettings,
              PortScannerPorts, PortScannerHistory, ServiceSetting, MetricsHttpStatus, SMON, WafRules, GeoipCodes,
              NginxMetrics, SystemInfo, Services, UserName, GitSetting, CheckerSetting, ApacheMetrics, WafNginx, ServiceStatus,

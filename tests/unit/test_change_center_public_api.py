@@ -186,7 +186,8 @@ def test_public_change_api_updates_draft(client, monkeypatch, public_api):
 
 
 @pytest.mark.parametrize(
-    'action', ('validate', 'approve', 'deploy', 'rollback', 'cancel', 'recover')
+    'action',
+    ('validate', 'approve', 'deploy', 'rollback', 'cancel', 'recover', 'pause', 'resume', 'promote'),
 )
 def test_public_change_api_exposes_each_workflow_action(
     client, monkeypatch, public_api, action
@@ -224,6 +225,88 @@ def test_public_change_api_limits_approval_to_administrators(
     assert response.status_code == 403
 
 
+def test_public_change_api_previews_and_controls_rollout_targets(
+    client, monkeypatch, public_api
+):
+    _user_params, headers = public_api
+    change = _change(17)
+    monkeypatch.setattr(public_change_api.change_sql, 'get_change', lambda _change_id: change)
+    monkeypatch.setattr(
+        public_change_api.change_service,
+        'rollout_preview',
+        lambda *_args: [{'server_id': 10, 'role': 'master'}],
+    )
+    monkeypatch.setattr(
+        public_change_api.change_service,
+        'retry_target',
+        lambda *_args: change,
+    )
+    monkeypatch.setattr(
+        public_change_api.change_service,
+        'serialize_change',
+        lambda item: {'id': item.id},
+    )
+
+    preview = client.get(
+        '/api/changes/rollout-preview?server_id=10&service=haproxy',
+        headers=headers,
+    )
+    action = client.post('/api/changes/17/targets/21/retry', headers=headers)
+
+    assert preview.status_code == 200
+    assert preview.get_json()['data'][0]['role'] == 'master'
+    assert action.status_code == 200
+    assert action.get_json()['data']['id'] == 17
+
+
+def test_public_change_api_exposes_stage_four_automation(
+    client, monkeypatch, public_api
+):
+    _user_params, headers = public_api
+    change = _change(18)
+    webhook = SimpleNamespace(id=4)
+    monkeypatch.setattr(public_change_api.change_sql, 'get_change', lambda _change_id: change)
+    monkeypatch.setattr(public_change_api.change_sql, 'list_webhooks', lambda _group_id: [webhook])
+    monkeypatch.setattr(public_change_api.change_automation, 'schedule_change', lambda *_args: change)
+    monkeypatch.setattr(public_change_api.change_automation, 'check_change_drift', lambda *_args: change)
+    monkeypatch.setattr(
+        public_change_api.change_automation,
+        'list_audit_events',
+        lambda *_args, **_kwargs: [{'id': 1, 'service': 'haproxy'}],
+    )
+    monkeypatch.setattr(
+        public_change_api.change_automation,
+        'deployment_statistics',
+        lambda _group_id, days, **_kwargs: {'period_days': days},
+    )
+    monkeypatch.setattr(
+        public_change_api.change_automation,
+        'serialize_webhook',
+        lambda item: {'id': item.id, 'secret_configured': False},
+    )
+    monkeypatch.setattr(
+        public_change_api.change_service, 'serialize_change', lambda item: {'id': item.id}
+    )
+
+    scheduled = client.post(
+        '/api/changes/18/schedule',
+        headers=headers,
+        json={'scheduled_at': '2099-01-01T10:00:00Z'},
+    )
+    drift = client.post('/api/changes/18/drift', headers=headers)
+    timeline = client.get('/api/changes/18/events', headers=headers)
+    audit = client.get('/api/changes/audit?q=node', headers=headers)
+    statistics = client.get('/api/changes/statistics?days=60', headers=headers)
+    webhooks = client.get('/api/changes/webhooks', headers=headers)
+
+    assert scheduled.status_code == 200
+    assert drift.status_code == 200
+    assert timeline.get_json()['data'][0]['id'] == 1
+    assert audit.get_json()['data'][0]['service'] == 'haproxy'
+    assert statistics.get_json()['data']['period_days'] == 60
+    assert webhooks.get_json()['data'][0]['id'] == 4
+
+
 def test_swagger_contains_configuration_change_entity(client, public_api):
     _user_params, headers = public_api
     response = client.get('/api/spec', headers=headers)
@@ -232,6 +315,7 @@ def test_swagger_contains_configuration_change_entity(client, public_api):
     spec = response.get_json()
     expected_paths = {
         '/api/changes',
+        '/api/changes/rollout-preview',
         '/api/changes/{change_id}',
         '/api/changes/{change_id}/validate',
         '/api/changes/{change_id}/approve',
@@ -239,11 +323,29 @@ def test_swagger_contains_configuration_change_entity(client, public_api):
         '/api/changes/{change_id}/rollback',
         '/api/changes/{change_id}/cancel',
         '/api/changes/{change_id}/recover',
+        '/api/changes/{change_id}/pause',
+        '/api/changes/{change_id}/resume',
+        '/api/changes/{change_id}/promote',
+        '/api/changes/{change_id}/targets/{target_id}/{action}',
+        '/api/changes/{change_id}/schedule',
+        '/api/changes/{change_id}/schedule/cancel',
+        '/api/changes/{change_id}/drift',
+        '/api/changes/{change_id}/events',
+        '/api/changes/{change_id}/report',
+        '/api/changes/audit',
+        '/api/changes/statistics',
+        '/api/changes/notification-destinations',
+        '/api/changes/webhooks',
+        '/api/changes/webhooks/{webhook_id}',
+        '/api/changes/webhooks/{webhook_id}/test',
     }
     assert expected_paths <= set(spec['paths'])
     assert '/changes/api' not in spec['paths']
     assert {
-        'ConfigChange', 'ConfigChangeCreate', 'ConfigChangeUpdate', 'ConfigChangeTarget'
+        'ConfigChange', 'ConfigChangeCreate', 'ConfigChangeUpdate', 'ConfigChangeTarget',
+        'ConfigChangeSchedule', 'ConfigChangeEvent', 'ConfigChangeWebhook',
+        'NotificationDestination', 'NotificationDestinationOption',
+        'ConfigChangeStatistics',
     } <= set(spec['definitions'])
     assert any(tag['name'] == 'Configuration changes' for tag in spec['tags'])
     assert spec['securityDefinitions']['BearerAuth']['name'] == 'Authorization'
@@ -267,3 +369,13 @@ def test_swagger_contains_configuration_change_entity(client, public_api):
     assert spec['definitions']['ConfigChange']['properties']['execution_mode']['enum'] == [
         'rolling', 'parallel'
     ]
+    assert spec['definitions']['ConfigChange']['properties']['manual_promotion']['type'] == 'boolean'
+    assert spec['definitions']['ConfigChangeTarget']['properties']['is_canary']['type'] == 'boolean'
+    assert 'awaiting_promotion' in spec['definitions']['ConfigChange']['properties']['status']['enum']
+    assert 'scheduled' in spec['definitions']['ConfigChange']['properties']['status']['enum']
+    assert 'schedule_missed' in spec['definitions']['ConfigChange']['properties']['status']['enum']
+    assert spec['definitions']['ConfigChange']['properties']['drift_status']['type'] == 'string'
+    assert spec['definitions']['ConfigChangeCreate']['properties']['notification_channels']['type'] == 'array'
+    assert spec['definitions']['ConfigChangeCreate']['properties']['notification_destinations']['items'] == {
+        '$ref': '#/definitions/NotificationDestination'
+    }

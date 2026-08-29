@@ -244,7 +244,14 @@ def get_super_admin_count() -> int:
 
 
 def select_users_emails_by_group_id(group_id: int):
-	query = User.select(User.email).where((User.group_id == group_id) & (User.role_id != 'guest'))
+	query = (User.select(User.email).join(
+		UserGroups, on=(User.user_id == UserGroups.user_id)
+	).where(
+		(UserGroups.user_group_id == group_id) &
+		(UserGroups.user_role_id != 4) &
+		(User.enabled == 1) &
+		(User.email != '')
+	).distinct())
 	try:
 		query_res = query.execute()
 	except Exception as e:
@@ -252,6 +259,38 @@ def select_users_emails_by_group_id(group_id: int):
 		return
 	else:
 		return query_res
+
+
+def select_notification_users_by_group_id(group_id: int):
+	query = (User.select(User).join(
+		UserGroups, on=(User.user_id == UserGroups.user_id)
+	).where(
+		(UserGroups.user_group_id == group_id) &
+		(UserGroups.user_role_id != 4) &
+		(User.enabled == 1) &
+		(User.email != '')
+	).distinct().order_by(User.username))
+	try:
+		return query.execute()
+	except Exception as e:
+		out_error(e)
+
+
+def get_notification_user_with_group(user_id: int, group_id: int) -> User:
+	try:
+		return (User.select(User).join(
+			UserGroups, on=(User.user_id == UserGroups.user_id)
+		).where(
+			(User.user_id == user_id) &
+			(UserGroups.user_group_id == group_id) &
+			(UserGroups.user_role_id != 4) &
+			(User.enabled == 1) &
+			(User.email != '')
+		).get())
+	except User.DoesNotExist:
+		raise RoxywiResourceNotFound('Email recipient is not available for the active group')
+	except Exception as e:
+		out_error(e)
 
 
 def is_user_super_admin(user_id: int) -> bool:

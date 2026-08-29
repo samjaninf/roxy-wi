@@ -152,12 +152,53 @@
 					</select><br>
 					<small>{{lang.change_center.execution_mode_help}}</small>
 				</p>
+				<details class="change-advanced-settings">
+					<summary>{{lang.change_center.advanced_rollout}}</summary>
+					<div class="change-advanced-grid">
+						<label for="change-batch-size"><b>{{lang.change_center.batch_size}}</b>
+							<input id="change-batch-size" type="number" min="1" max="50" placeholder="{{lang.change_center.batch_size_auto}}">
+						</label>
+						<label for="change-max-parallel"><b>{{lang.change_center.max_parallel}}</b>
+							<input id="change-max-parallel" type="number" min="1" max="8" value="8">
+						</label>
+						<label for="change-health-mode"><b>{{lang.change_center.health_check}}</b>
+							<select id="change-health-mode">
+								<option value="full" selected>{{lang.change_center.health_check_modes.full}}</option>
+								<option value="config">{{lang.change_center.health_check_modes.config}}</option>
+								<option value="service">{{lang.change_center.health_check_modes.service}}</option>
+								<option value="none">{{lang.change_center.health_check_modes.none}}</option>
+							</select>
+						</label>
+						<label for="change-health-retries"><b>{{lang.change_center.health_check_retries}}</b>
+							<input id="change-health-retries" type="number" min="1" max="10" value="1">
+						</label>
+						<label for="change-health-interval"><b>{{lang.change_center.health_check_interval}}</b>
+							<input id="change-health-interval" type="number" min="0" max="60" value="0">
+						</label>
+					</div>
+					<label class="change-advanced-check"><input id="change-manual-promotion" type="checkbox"> {{lang.change_center.manual_promotion}}</label>
+					<h4>{{lang.change_center.notifications}}</h4>
+					<div id="change-notification-destinations" class="change-notification-destinations" aria-live="polite">{{lang.change_center.notification_loading}}</div>
+					<small>{{lang.change_center.notifications_help}}</small>
+					<h4>{{lang.change_center.rollout_targets}}</h4>
+					<div id="change-rollout-preview" class="change-rollout-preview" aria-live="polite">{{lang.change_center.rollout_loading}}</div>
+				</details>
 				<p>
 					<label><input id="change-requires-approval" type="checkbox"> {{lang.change_center.requires_approval}}</label>
 				</p>
 				<div id="change-editor-i18n" data-required="{{lang.errors.empty_name}}"
 					 data-created="{{lang.change_center.created}}" data-create="{{lang.change_center.create}}"
-					 data-cancel="{{lang.words.cancel|title()}}"></div>
+					 data-cancel="{{lang.words.cancel|title()}}" data-node="{{lang.change_center.node}}"
+					 data-role="{{lang.change_center.role}}" data-canary="{{lang.change_center.canary}}"
+					 data-exclude="{{lang.change_center.exclude}}" data-rollout-loading="{{lang.change_center.rollout_loading}}"
+					 data-rollout-unavailable="{{lang.change_center.rollout_unavailable}}"
+					 data-notification-loading="{{lang.change_center.notification_loading}}"
+					 data-notification-unavailable="{{lang.change_center.notification_unavailable}}"
+					 data-notification-empty="{{lang.change_center.notification_empty}}"
+					 data-notification-retry="{{lang.change_center.notification_retry}}"
+					 data-configure-notifications="{{lang.change_center.configure_notifications}}"
+					 data-role-master="{{lang.change_center.roles.master}}" data-role-slave="{{lang.change_center.roles.slave}}"
+					 data-role-standalone="{{lang.change_center.roles.standalone}}"></div>
 			</div>
 			<script src="{{ url_for('static', filename='js/change-editor.js') }}"></script>
 			<script src="{{ url_for('static', filename='js/config-workflow.js') }}"></script>

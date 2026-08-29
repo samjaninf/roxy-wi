@@ -160,12 +160,13 @@
 
 		labelRows();
 		$table.find('thead th').each(function (index) {
+			if ($(this).attr('data-sortable') === 'false') return;
 			$(this).attr({tabindex: '0', role: 'button', 'aria-sort': 'none'}).on('click keydown', function (event) {
 				if (event.type === 'keydown' && event.key !== 'Enter' && event.key !== ' ') return;
 				event.preventDefault();
 				sortDirection = sortColumn === index ? -sortDirection : 1;
 				sortColumn = index;
-				$table.find('thead th').attr('aria-sort', 'none');
+				$table.find('thead th[role="button"]').attr('aria-sort', 'none');
 				$(this).attr('aria-sort', sortDirection === 1 ? 'ascending' : 'descending');
 				render();
 			});

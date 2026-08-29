@@ -26,15 +26,18 @@ cache.init_app(app)
 
 scheduler = APScheduler()
 scheduler.init_app(app)
-if app.config['SCHEDULER_ENABLED'] and not app.config['TESTING']:
-    scheduler.start()
 
 jwt = JWTManager(app)
 
-from app.modules.db.db_model import create_tables
+from app.modules.db.db_model import create_tables, close_database_connection
 from app.create_db import default_values
 from app.modules.db.migration_manager import migrate
 from app.modules.db import token as token_sql
+
+
+@app.teardown_appcontext
+def close_request_database_connection(_exception=None):
+    close_database_connection()
 
 
 @jwt.token_in_blocklist_loader
@@ -116,6 +119,10 @@ else:
 from app import login
 if not app.config['TESTING']:
     from app import jobs
+    if app.config['SCHEDULER_ENABLED']:
+        # Register every task before starting APScheduler. Starting it earlier can
+        # leave the dedicated runner alive without the jobs imported below.
+        scheduler.start()
 
 # Register error handlers
 from app.modules.roxywi.error_handler import register_error_handlers

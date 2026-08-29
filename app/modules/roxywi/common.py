@@ -375,7 +375,7 @@ def require_request_server_access() -> None:
 	request_data = request.get_json(silent=True) or request.form
 	if not hasattr(request_data, 'get'):
 		request_data = {}
-	for key in ('server_id', 'server_ip', 'serv'):
+	for key in ('server_id', 'server_ip', 'serv', 'server_from'):
 		if request_data.get(key) is not None:
 			references.append((key, request_data.get(key)))
 
@@ -386,6 +386,11 @@ def require_request_server_access() -> None:
 		resolved_server_ids = set()
 		for key, server_reference in references:
 			if server_reference in ('', None, 'all'):
+				continue
+			# Nettools intentionally supports running diagnostics from the
+			# Roxy-WI host itself. It has no managed-server record or SSH
+			# credential, so there is no tenant-owned resource to authorize.
+			if key == 'server_from' and server_reference == 'localhost':
 				continue
 			# Some legacy routes use the name ``server_ip`` for a value selected
 			# by server ID and distinguish it with Flask's ``int`` converter, for

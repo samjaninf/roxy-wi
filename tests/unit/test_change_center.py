@@ -1,7 +1,7 @@
 import importlib
 from datetime import datetime, timedelta
 from pathlib import Path
-from threading import Barrier, Lock, get_ident
+from threading import Barrier, Event, Lock, Thread, get_ident
 from types import SimpleNamespace
 
 import pytest
@@ -14,7 +14,7 @@ import app.modules.change.access as change_access
 import app.modules.config.config as config_module
 import app.modules.db.change as change_sql
 from app.modules.change.schemas import ConfigChangeCreate, ConfigChangeUpdate
-from app.modules.db.db_model import ConfigChange, ConfigChangeTarget, Server, connect
+from app.modules.db.db_model import ConfigChange, ConfigChangeTarget, Server, Slack, connect
 from app.modules.roxywi.exception import (
     RoxywiConflictError,
     RoxywiPermissionError,
@@ -109,6 +109,29 @@ def _seed_rollout_targets(change, managed_server, tmp_path, *, status='pending')
     return change_sql.create_targets(change.id, values)
 
 
+def test_change_repository_supplies_rollout_defaults_without_database_defaults(monkeypatch):
+    captured = {}
+    marker = object()
+
+    def create(**values):
+        captured.update(values)
+        return marker
+
+    monkeypatch.setattr(change_sql.ConfigChange, 'create', staticmethod(create))
+
+    result = change_sql.create_change(title='Migration-safe draft')
+
+    assert result is marker
+    assert captured['batch_size'] == 0
+    assert captured['max_parallel'] == 8
+    assert captured['manual_promotion'] == 0
+    assert captured['health_check_mode'] == 'full'
+    assert captured['health_check_retries'] == 1
+    assert captured['health_check_interval'] == 0
+    assert captured['pause_requested'] == 0
+    assert captured['notification_destinations'] == '[]'
+
+
 def test_create_change_captures_running_config_and_diff(managed_server, monkeypatch):
     def get_config(_server_ip, destination, **_kwargs):
         Path(destination).write_text('global\n', encoding='utf-8')
@@ -171,6 +194,36 @@ def test_create_change_rejects_wrong_group_and_disabled_service(managed_server):
         change_service.create_change(body, user_id=1, group_id=1)
 
 
+def test_create_change_rejects_foreign_notification_recipient_before_ssh(
+    managed_server, monkeypatch
+):
+    receiver = Slack.create(
+        token='foreign-secret', chanel_name='Foreign channel', group_id=2
+    )
+    ssh_called = False
+
+    def unexpected_ssh(*_args, **_kwargs):
+        nonlocal ssh_called
+        ssh_called = True
+
+    monkeypatch.setattr(change_service.config_mod, 'get_config', unexpected_ssh)
+    body = ConfigChangeCreate(
+        server_id=managed_server.server_id,
+        service='haproxy',
+        config='global\n',
+        title='Foreign notification',
+        notification_destinations=[{
+            'channel': 'slack', 'recipient_id': receiver.id,
+        }],
+    )
+    try:
+        with pytest.raises(RoxywiValidationError, match='active group'):
+            change_service.create_change(body, user_id=1, group_id=1)
+        assert not ssh_called
+    finally:
+        Slack.delete().where(Slack.id == receiver.id).execute()
+
+
 def test_create_change_removes_private_files_when_snapshot_fails(
     managed_server, tmp_path, monkeypatch
 ):
@@ -222,6 +275,17 @@ def test_change_schemas_reject_incomplete_or_unsafe_input():
             config='global',
             title='Invalid mode',
             execution_mode='all-at-once',
+        )
+    with pytest.raises(ValueError, match='notification_destinations must not contain duplicates'):
+        ConfigChangeCreate(
+            server_id=1,
+            service='haproxy',
+            config='global',
+            title='Duplicate recipients',
+            notification_destinations=[
+                {'channel': 'email', 'recipient_id': 7},
+                {'channel': 'email', 'recipient_id': 7},
+            ],
         )
 
 
@@ -1195,6 +1259,41 @@ def test_change_writes_retry_transient_sqlite_lock(monkeypatch):
     assert delays == list(change_sql._LOCK_RETRY_DELAYS[:2])
 
 
+def test_change_writes_are_serialized_within_the_process():
+    first_entered = Event()
+    release_first = Event()
+    second_started = Event()
+    second_entered = Event()
+
+    def first_operation():
+        first_entered.set()
+        assert release_first.wait(timeout=2)
+
+    def second_operation():
+        second_entered.set()
+
+    first_thread = Thread(target=lambda: change_sql._execute_write(first_operation))
+    second_thread = Thread(
+        target=lambda: (
+            second_started.set(),
+            change_sql._execute_write(second_operation),
+        )
+    )
+    first_thread.start()
+    assert first_entered.wait(timeout=2)
+    second_thread.start()
+    assert second_started.wait(timeout=2)
+    assert not second_entered.wait(timeout=0.1)
+
+    release_first.set()
+    first_thread.join(timeout=2)
+    second_thread.join(timeout=2)
+
+    assert not first_thread.is_alive()
+    assert not second_thread.is_alive()
+    assert second_entered.is_set()
+
+
 def test_change_write_returns_clear_conflict_after_lock_retries_are_exhausted(monkeypatch):
     attempts = []
     monkeypatch.setattr(change_sql, 'sleep', lambda _delay: None)
@@ -1300,6 +1399,40 @@ def test_execution_mode_migration_adds_and_removes_column(monkeypatch):
 
     assert operations[0][0:3] == ('add', 'config_changes', 'execution_mode')
     assert operations[1] == ('drop', 'config_changes', 'execution_mode')
+
+
+def test_advanced_rollout_migration_adds_and_removes_all_columns(monkeypatch):
+    migration = importlib.import_module(
+        'app.modules.db.migrations.20260829000000_add_advanced_change_rollout'
+    )
+    operations = []
+    migrator = SimpleNamespace(
+        add_column=lambda table, column, field: ('add', table, column, field),
+        drop_column=lambda table, column: ('drop', table, column),
+    )
+    monkeypatch.setattr(migration, 'connect', lambda **_kwargs: migrator)
+    monkeypatch.setattr(migration, '_columns', lambda _table: set())
+    monkeypatch.setattr(migration, 'migrate', lambda *items: operations.extend(items))
+
+    migration.up()
+    added = list(operations)
+    monkeypatch.setattr(
+        migration,
+        '_columns',
+        lambda table: {
+            name for name, _field in (
+                migration.CHANGE_COLUMNS if table == 'config_changes'
+                else migration.TARGET_COLUMNS
+            )
+        },
+    )
+    migration.down()
+    removed = operations[len(added):]
+
+    assert len(added) == len(migration.CHANGE_COLUMNS) + len(migration.TARGET_COLUMNS)
+    assert len(removed) == len(added)
+    assert all(operation[0] == 'add' for operation in added)
+    assert all(operation[0] == 'drop' for operation in removed)
 
 
 def test_change_is_isolated_to_active_group(managed_server, tmp_path):
@@ -1549,6 +1682,9 @@ def test_every_change_status_has_an_explicit_background():
         'pending_approval',
         'approved',
         'deploying',
+        'pause_requested',
+        'paused',
+        'awaiting_promotion',
         'deployment_interrupted',
         'deployed',
         'failed',
@@ -1560,6 +1696,7 @@ def test_every_change_status_has_an_explicit_background():
         'cancelled',
         'pending',
         'skipped',
+        'excluded',
         'deployment_failed',
     )
 
@@ -1572,3 +1709,386 @@ def test_every_change_status_has_an_explicit_background():
 def test_change_center_api_requires_authentication(client):
     response = client.get('/changes/api', headers={'Accept': 'application/json'})
     assert response.status_code == 401
+
+
+def test_advanced_rollout_schema_validates_limits_and_target_sets():
+    body = ConfigChangeCreate(
+        server_id=1, service='haproxy', config='global\n', title='Advanced rollout',
+        batch_size=3, max_parallel=4, manual_promotion=True,
+        health_check_mode='service', health_check_retries=3, health_check_interval=2,
+        canary_server_ids=[2], excluded_server_ids=[3],
+    )
+    assert (body.batch_size, body.max_parallel, body.manual_promotion) == (3, 4, True)
+
+    with pytest.raises(ValueError, match='both canary and excluded'):
+        ConfigChangeCreate(
+            server_id=1, service='haproxy', config='global\n', title='Invalid rollout',
+            canary_server_ids=[2], excluded_server_ids=[2],
+        )
+    with pytest.raises(ValueError):
+        ConfigChangeCreate(
+            server_id=1, service='haproxy', config='global\n',
+            title='Too much concurrency', max_parallel=9,
+        )
+
+
+def test_rollout_plan_places_canaries_first_and_excluded_nodes_outside_batches(
+    cluster_servers, tmp_path
+):
+    slaves, master = cluster_servers
+    change = _db_change(master, tmp_path, execution_mode='rolling', batch_size=1)
+    targets = _seed_rollout_targets(change, master, tmp_path)
+    plan = change_service._prepare_rollout_plan(
+        targets, execution_mode='rolling', batch_size=1,
+        canary_server_ids=[slaves[1].server_id],
+        excluded_server_ids=[slaves[0].server_id],
+    )
+    by_server = {target['server_id']: target for target in plan}
+
+    assert by_server[slaves[1].server_id]['is_canary'] == 1
+    assert by_server[slaves[1].server_id]['batch'] == 0
+    assert by_server[slaves[0].server_id]['excluded'] == 1
+    assert by_server[slaves[0].server_id]['batch'] == -1
+    assert by_server[master.server_id]['batch'] == 1
+
+
+def test_rollout_plan_rejects_master_canary_and_exclusion(cluster_servers, tmp_path):
+    _slaves, master = cluster_servers
+    change = _db_change(master, tmp_path)
+    targets = _seed_rollout_targets(change, master, tmp_path)
+
+    with pytest.raises(RoxywiValidationError, match='Only slave nodes'):
+        change_service._prepare_rollout_plan(
+            targets, execution_mode='rolling', batch_size=1,
+            canary_server_ids=[master.server_id],
+        )
+    with pytest.raises(RoxywiValidationError, match='cannot be excluded'):
+        change_service._prepare_rollout_plan(
+            targets, execution_mode='rolling', batch_size=1,
+            excluded_server_ids=[master.server_id],
+        )
+
+
+def test_create_change_persists_advanced_rollout_settings(cluster_servers, monkeypatch):
+    slaves, master = cluster_servers
+
+    def get_config(server_ip, destination, **_kwargs):
+        Path(destination).write_text(f'# {server_ip}\n', encoding='utf-8')
+
+    monkeypatch.setattr(change_service.config_mod, 'get_config', get_config)
+    change = change_service.create_change(
+        ConfigChangeCreate(
+            server_id=master.server_id, service='haproxy', config='global\n  daemon\n',
+            title='Canary rollout', batch_size=2, max_parallel=2,
+            manual_promotion=True, health_check_mode='full',
+            health_check_retries=3, health_check_interval=1,
+            canary_server_ids=[slaves[1].server_id],
+            excluded_server_ids=[slaves[0].server_id],
+        ),
+        user_id=1, group_id=1,
+    )
+    serialized = change_service.serialize_change(change)
+    targets = {target['server_id']: target for target in serialized['targets']}
+
+    assert serialized['batch_size'] == 2
+    assert serialized['max_parallel'] == 2
+    assert serialized['manual_promotion'] is True
+    assert serialized['health_check_retries'] == 3
+    assert change.pause_requested == 0
+    assert targets[slaves[1].server_id]['is_canary'] is True
+    assert targets[slaves[0].server_id]['excluded'] is True
+    assert targets[master.server_id]['batch'] == 1
+
+
+def test_create_change_does_not_contact_pre_excluded_unavailable_slave(
+    cluster_servers, monkeypatch
+):
+    slaves, master = cluster_servers
+    contacted = []
+
+    def get_config(server_ip, destination, **_kwargs):
+        contacted.append(server_ip)
+        if server_ip == slaves[0].ip:
+            raise RuntimeError('unavailable node was contacted')
+        Path(destination).write_text(f'# {server_ip}\n', encoding='utf-8')
+
+    monkeypatch.setattr(change_service.config_mod, 'get_config', get_config)
+    change = change_service.create_change(
+        ConfigChangeCreate(
+            server_id=master.server_id,
+            service='haproxy',
+            config='global\n',
+            title='Exclude offline slave',
+            excluded_server_ids=[slaves[0].server_id],
+        ),
+        user_id=1,
+        group_id=1,
+    )
+    excluded = next(
+        target for target in change_sql.list_targets(change.id)
+        if target.server_id == slaves[0].server_id
+    )
+
+    assert slaves[0].ip not in contacted
+    assert excluded.excluded == 1
+    assert not Path(excluded.rollback_path).exists()
+
+
+def test_manual_canary_rollout_waits_for_each_promotion(
+    cluster_servers, tmp_path, monkeypatch
+):
+    slaves, master = cluster_servers
+    change = _db_change(
+        master, tmp_path, status='validated', batch_size=1,
+        max_parallel=1, manual_promotion=1,
+    )
+    targets = _seed_rollout_targets(change, master, tmp_path)
+    change_sql.update_target(targets[1].id, is_canary=1)
+    deployed_to = []
+
+    monkeypatch.setattr(change_service, '_ensure_base_unchanged', lambda *_args: None)
+    monkeypatch.setattr(change_service, '_ensure_action_ready', lambda *_args: None)
+    monkeypatch.setattr(
+        change_service, '_reconcile_interrupted_rollout',
+        lambda item: change_sql.list_targets(item.id),
+    )
+    monkeypatch.setattr(change_service, '_save_successful_version', lambda *_args: None)
+    monkeypatch.setattr(change_service, '_check_target', lambda *_args: 'Healthy')
+    monkeypatch.setattr(
+        change_service.config_mod, 'upload_and_restart',
+        lambda server_ip, *_args, **_kwargs: deployed_to.append(server_ip) or 'Uploaded',
+    )
+
+    first = change_service.deploy_change(change.id, group_id=1)
+    assert first.status == 'awaiting_promotion'
+    assert deployed_to == [slaves[1].ip]
+    second = change_service.promote_change(change.id, group_id=1)
+    assert second.status == 'awaiting_promotion'
+    assert deployed_to == [slaves[1].ip, slaves[0].ip]
+    completed = change_service.promote_change(change.id, group_id=1)
+    assert completed.status == 'deployed'
+    assert deployed_to == [slaves[1].ip, slaves[0].ip, master.ip]
+
+
+def test_pause_request_stops_rollout_after_active_batch(
+    cluster_servers, tmp_path, monkeypatch
+):
+    _slaves, master = cluster_servers
+    change = _db_change(master, tmp_path, status='validated', batch_size=1, max_parallel=1)
+    _seed_rollout_targets(change, master, tmp_path)
+    original_batch = change_service._deploy_batch
+    batch_calls = []
+
+    monkeypatch.setattr(change_service, '_ensure_base_unchanged', lambda *_args: None)
+    monkeypatch.setattr(change_service, '_ensure_action_ready', lambda *_args: None)
+    monkeypatch.setattr(change_service, '_save_successful_version', lambda *_args: None)
+    monkeypatch.setattr(change_service, '_check_target', lambda *_args: 'Healthy')
+    monkeypatch.setattr(change_service.config_mod, 'upload_and_restart', lambda *_args, **_kwargs: 'Uploaded')
+
+    def deploy_one_batch(active_change, targets, all_targets):
+        original_batch(active_change, targets, all_targets)
+        batch_calls.append([target.id for target in targets])
+        change_sql.update_change(active_change.id, status='pause_requested', pause_requested=1)
+
+    monkeypatch.setattr(change_service, '_deploy_batch', deploy_one_batch)
+    paused = change_service.deploy_change(change.id, group_id=1)
+
+    assert paused.status == 'paused'
+    assert len(batch_calls) == 1
+    assert sum(target.status == 'deployed' for target in change_sql.list_targets(change.id)) == 1
+
+
+def test_pause_and_promotion_transitions_are_guarded(managed_server, tmp_path):
+    deploying = _db_change(managed_server, tmp_path, status='deploying')
+    paused = change_service.pause_change(deploying.id, group_id=1)
+    assert paused.status == 'pause_requested'
+    assert paused.pause_requested == 1
+
+    resumed = change_service.resume_change(deploying.id, group_id=1)
+    assert resumed.status == 'deploying'
+    assert resumed.pause_requested == 0
+
+    ConfigChange.update(status='awaiting_promotion', pause_requested=0).where(
+        ConfigChange.id == deploying.id
+    ).execute()
+    paused = change_service.pause_change(deploying.id, group_id=1)
+    assert paused.status == 'paused'
+    with pytest.raises(RoxywiConflictError):
+        change_service.promote_change(deploying.id, group_id=1)
+
+
+def test_health_checks_retry_and_can_be_disabled(managed_server, tmp_path, monkeypatch):
+    change = _db_change(
+        managed_server, tmp_path, health_check_retries=3, health_check_interval=2,
+    )
+    target = _seed_rollout_targets(change, managed_server, tmp_path)[0]
+    attempts = []
+    delays = []
+    original_health_check = change_service._check_target
+
+    def health_check(*_args):
+        attempts.append(1)
+        if len(attempts) < 3:
+            raise RuntimeError('not ready')
+        return 'Healthy'
+
+    monkeypatch.setattr(change_service, '_check_target', health_check)
+    monkeypatch.setattr(change_service, 'sleep', lambda seconds: delays.append(seconds))
+
+    assert 'attempt 3/3' in change_service._run_target_health_check(change, target, 1)
+    assert len(attempts) == 3
+    assert delays == [2, 2]
+    change.health_check_mode = 'none'
+    assert original_health_check(change, target, 1) == 'Post-deployment health checks are disabled'
+
+
+def test_health_check_failure_is_persisted_on_target(
+    managed_server, tmp_path, monkeypatch
+):
+    change = _db_change(
+        managed_server, tmp_path, status='validated', health_check_retries=2,
+    )
+    target = _seed_rollout_targets(change, managed_server, tmp_path)[0]
+    monkeypatch.setattr(change_service, '_ensure_base_unchanged', lambda *_args: None)
+    monkeypatch.setattr(change_service, '_ensure_action_ready', lambda *_args: None)
+    monkeypatch.setattr(change_service, '_upload', lambda *_args: 'Uploaded')
+    monkeypatch.setattr(
+        change_service, '_check_target',
+        lambda *_args: (_ for _ in ()).throw(RuntimeError('unhealthy')),
+    )
+    original_apply = change_service._apply_target
+    monkeypatch.setattr(
+        change_service,
+        '_apply_target',
+        lambda active_change, target_item, local_path, count, **kwargs: (
+            'Rolled back' if local_path == active_change.rollback_path
+            else original_apply(active_change, target_item, local_path, count, **kwargs)
+        ),
+    )
+
+    with pytest.raises(RoxywiValidationError, match='Health check failed'):
+        change_service.deploy_change(change.id, group_id=1)
+
+    failed_target = change_sql.get_target(target.id)
+    assert 'Attempt 2/2: unhealthy' in failed_target.health_output
+
+
+def test_exclude_and_include_slave_replans_rollout(
+    cluster_servers, tmp_path, monkeypatch
+):
+    slaves, master = cluster_servers
+    change = _db_change(master, tmp_path, batch_size=1)
+    targets = _seed_rollout_targets(change, master, tmp_path)
+    by_server = {target.server_id: target for target in targets}
+
+    excluded = change_service.exclude_target(
+        change.id, by_server[slaves[0].server_id].id,
+        group_id=1, reason='maintenance',
+    )
+    excluded_target = change_sql.get_target(by_server[slaves[0].server_id].id)
+    assert excluded.id == change.id
+    assert excluded_target.excluded == 1
+    assert excluded_target.status == 'excluded'
+    assert excluded_target.batch == -1
+
+    with pytest.raises(RoxywiConflictError, match='cannot be excluded'):
+        change_service.exclude_target(
+            change.id, by_server[master.server_id].id, group_id=1,
+        )
+
+    monkeypatch.setattr(
+        change_service.config_mod, 'validate_candidate_config',
+        lambda *_args, **_kwargs: 'Configuration is valid',
+    )
+    change_service.include_target(
+        change.id, by_server[slaves[0].server_id].id, group_id=1,
+    )
+    included_target = change_sql.get_target(by_server[slaves[0].server_id].id)
+    assert included_target.excluded == 0
+    assert included_target.status == 'pending'
+    assert included_target.batch >= 0
+
+
+def test_per_node_retry_leaves_partial_rollout_paused(
+    cluster_servers, tmp_path, monkeypatch
+):
+    _slaves, master = cluster_servers
+    change = _db_change(master, tmp_path, status='auto_rolled_back')
+    targets = _seed_rollout_targets(change, master, tmp_path, status='rolled_back')
+    monkeypatch.setattr(
+        change_service, '_reconcile_interrupted_rollout',
+        lambda item: change_sql.list_targets(item.id),
+    )
+    monkeypatch.setattr(change_service, '_ensure_target_reload_ready', lambda *_args: None)
+    monkeypatch.setattr(
+        change_service, '_apply_target_result',
+        lambda *_args, **_kwargs: ('Uploaded', 'Healthy'),
+    )
+    monkeypatch.setattr(change_service, '_save_successful_version', lambda *_args: None)
+
+    retried = change_service.retry_target(change.id, targets[0].id, group_id=1)
+
+    assert retried.status == 'paused'
+    assert change_sql.get_target(targets[0].id).status == 'deployed'
+    assert sum(target.status == 'deployed' for target in change_sql.list_targets(change.id)) == 1
+
+
+def test_per_node_rollback_keeps_remaining_nodes_deployed(
+    cluster_servers, tmp_path, monkeypatch
+):
+    _slaves, master = cluster_servers
+    change = _db_change(master, tmp_path, status='deployed')
+    targets = _seed_rollout_targets(change, master, tmp_path, status='deployed')
+    monkeypatch.setattr(change_service, '_apply_target', lambda *_args, **_kwargs: 'Restored')
+    monkeypatch.setattr(change_service, '_save_successful_version', lambda *_args: None)
+
+    rolled_back = change_service.rollback_target(change.id, targets[0].id, group_id=1)
+
+    assert rolled_back.status == 'paused'
+    assert change_sql.get_target(targets[0].id).status == 'rolled_back'
+    assert sum(target.status == 'deployed' for target in change_sql.list_targets(change.id)) == 2
+
+
+def test_target_action_rejects_target_from_another_change(managed_server, tmp_path):
+    first = _db_change(managed_server, tmp_path, status='paused')
+    first_target = _seed_rollout_targets(first, managed_server, tmp_path)[0]
+    second = _db_change(managed_server, tmp_path, status='paused', title='Other change')
+
+    with pytest.raises(RoxywiResourceNotFound):
+        change_service.retry_target(second.id, first_target.id, group_id=1)
+
+
+def test_change_center_stage_three_assets_expose_all_rollout_controls():
+    template = Path('app/templates/change_center.html').read_text(encoding='utf-8')
+    editor_template = Path('app/templates/config.html').read_text(encoding='utf-8')
+    script = Path('app/static/js/change-center.js').read_text(encoding='utf-8')
+    editor_script = Path('app/static/js/change-editor.js').read_text(encoding='utf-8')
+
+    for action in ('pause', 'resume', 'promote'):
+        assert f"'{action}'" in script
+    for action in ('retry', 'rollback', 'exclude', 'include'):
+        assert action in script
+    assert "'/targets/' + targetId + '/' + action" in script
+    assert 'change-details-rollout' in template
+    assert 'change-batch-size' in editor_template
+    assert 'change-manual-promotion' in editor_template
+    assert '/changes/api/rollout-preview' in editor_script
+
+
+def test_change_center_translations_cover_every_stage_three_key(app):
+    languages = ('en', 'ru', 'fr', 'es-ES', 'pt-br', 'zh')
+    with app.app_context():
+        catalogs = {
+            language: app.jinja_env.get_template(
+                f'languages/{language}.html'
+            ).module.change_center
+            for language in languages
+        }
+
+    expected_keys = set(catalogs['en'])
+    expected_statuses = set(catalogs['en']['statuses'])
+    expected_health_modes = set(catalogs['en']['health_check_modes'])
+    for catalog in catalogs.values():
+        assert set(catalog) == expected_keys
+        assert set(catalog['statuses']) == expected_statuses
+        assert set(catalog['health_check_modes']) == expected_health_modes

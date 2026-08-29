@@ -10,8 +10,18 @@ import app.modules.roxywi.roxy as roxy
 import app.modules.common.common as common
 import app.modules.tools.common as tools_common
 import app.modules.roxy_wi_tools as roxy_wi_tools
+from app.modules.db.db_model import close_database_connection
 
 get_config = roxy_wi_tools.GetConfigVar()
+
+
+def _run_database_job(callback):
+    """Run a scheduler callback and release its thread-local DB connection."""
+    try:
+        with scheduler.app.app_context():
+            return callback()
+    finally:
+        close_database_connection()
 
 
 def update_new_versions() -> None:
@@ -26,36 +36,27 @@ def update_new_versions() -> None:
 
 @scheduler.task('interval', id='update_plan', minutes=55, misfire_grace_time=None)
 def update_user_status():
-    app = scheduler.app
-    with app.app_context():
-        roxy.update_plan()
+    return _run_database_job(roxy.update_plan)
 
 
 @scheduler.task('interval', id='check_new_version', days=1, misfire_grace_time=None)
 def check_new_version():
-    app = scheduler.app
-    with app.app_context():
-        update_new_versions()
+    return _run_database_job(update_new_versions)
 
 
 @scheduler.task('interval', id='update_cur_tool_versions', days=1, misfire_grace_time=None)
 def update_cur_tool_versions():
-    app = scheduler.app
-    with app.app_context():
-        tools_common.update_cur_tool_versions()
+    return _run_database_job(tools_common.update_cur_tool_versions)
 
 
 @scheduler.task('interval', id='delete_action_history_for_period', minutes=70, misfire_grace_time=None)
 def delete_action_history_for_period():
-    app = scheduler.app
-    with app.app_context():
-        history_sql.delete_action_history_for_period()
+    return _run_database_job(history_sql.delete_action_history_for_period)
 
 
 @scheduler.task('interval', id='delete_old_logs', hours=1, misfire_grace_time=None)
 def delete_old_logs():
-    app = scheduler.app
-    with app.app_context():
+    def delete_logs():
         time_storage = sql.get_setting('log_time_storage')
         log_path = get_config.get_config_var('main', 'log_path')
         try:
@@ -68,6 +69,7 @@ def delete_old_logs():
                         os.remove(curpath)
         except Exception as e:
             print(f'error: cannot delete old log files: {e}')
+    return _run_database_job(delete_logs)
 
 
 @scheduler.task('interval', id='update_owner_on_log', hours=12, misfire_grace_time=None)
@@ -77,6 +79,54 @@ def update_owner_on_log():
         common.set_correct_owner(log_path)
     except Exception:
         pass
+
+
+@scheduler.task(
+    'interval',
+    id='change_center_scheduled_deployments',
+    seconds=15,
+    max_instances=1,
+    coalesce=True,
+    misfire_grace_time=30,
+)
+def run_change_center_scheduled_deployments():
+    """Run due Change Center deployments from the dedicated scheduler process."""
+    def run():
+        from app.modules.change import automation
+        return automation.run_due_scheduled_changes()
+    return _run_database_job(run)
+
+
+@scheduler.task(
+    'interval',
+    id='change_center_deliveries',
+    seconds=10,
+    max_instances=1,
+    coalesce=True,
+    misfire_grace_time=30,
+)
+def run_change_center_deliveries():
+    """Deliver queued notifications and webhooks without blocking deployments."""
+    def run():
+        from app.modules.change import automation
+        return automation.process_pending_deliveries()
+    return _run_database_job(run)
+
+
+@scheduler.task(
+    'interval',
+    id='change_center_drift_detection',
+    minutes=5,
+    max_instances=1,
+    coalesce=True,
+    misfire_grace_time=60,
+)
+def run_change_center_drift_detection():
+    """Continuously compare deployed configurations with approved baselines."""
+    def run():
+        from app.modules.change import automation
+        return automation.run_continuous_drift_scan()
+    return _run_database_job(run)
 
 
 @scheduler.task('interval', id='delete_ansible_artifacts', hours=24, misfire_grace_time=None)

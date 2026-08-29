@@ -16,7 +16,50 @@
 	</div>
 	{% else %}
 	<div id="change-center" data-user-id="{{g.user_params['user_id']}}" data-role="{{g.user_params['role']}}">
-		<table class="overview hover order-column display compact" id="change-center-table" data-ux-table data-searchable="true" data-page-size="20">
+		<div class="change-center-toolbar">
+			<div class="change-center-toolbar-actions">
+				<button type="button" id="change-open-audit" class="ui-button ui-widget ui-corner-all"><span class="fas fa-history" aria-hidden="true"></span> {{lang.change_center.audit_history}}</button>
+				{% if g.user_params['role']|int <= 2 %}
+				<button type="button" id="change-open-webhooks" class="ui-button ui-widget ui-corner-all"><span class="fas fa-plug" aria-hidden="true"></span> {{lang.change_center.webhooks}}</button>
+				{% endif %}
+			</div>
+			<div class="change-center-stats" aria-label="{{lang.change_center.statistics}}">
+				<div class="change-stat"><span>{{lang.change_center.deployments}}</span><strong id="change-stat-deployments">—</strong></div>
+				<div class="change-stat"><span>{{lang.change_center.success_rate}}</span><strong id="change-stat-success-rate">—</strong></div>
+				<div class="change-stat"><span>{{lang.change_center.average_duration}}</span><strong id="change-stat-duration">—</strong></div>
+				<div class="change-stat"><span>{{lang.change_center.drifted_nodes}}</span><strong id="change-stat-drift">—</strong></div>
+			</div>
+		</div>
+		<div class="change-list-toolbar" role="search" aria-label="{{lang.change_center.filters}}">
+			<label>
+				<span>{{lang.ux.search}}</span>
+				<input type="search" id="change-list-search" placeholder="{{lang.change_center.search_placeholder}}" autocomplete="off">
+			</label>
+			<label>
+				<span>{{lang.words.service|title()}}</span>
+				<select id="change-list-service"><option value="">{{lang.ux.all}}</option></select>
+			</label>
+			<label>
+				<span>{{lang.words.status|title()}}</span>
+				<select id="change-list-status"><option value="">{{lang.ux.all}}</option></select>
+			</label>
+			<label>
+				<span title="{{lang.change_center.drift_help}}">{{lang.change_center.drift}} <span class="fas fa-info-circle" aria-hidden="true"></span></span>
+				<select id="change-list-drift"><option value="">{{lang.ux.all}}</option></select>
+			</label>
+			<button type="button" id="change-list-clear" class="ui-button ui-widget ui-corner-all">
+				<span class="fas fa-times" aria-hidden="true"></span> {{lang.change_center.clear_filters}}
+			</button>
+			<span id="change-list-count" class="change-list-count" aria-live="polite"></span>
+		</div>
+		<div id="change-center-list-state" class="change-list-state" role="status" aria-live="polite">
+			<span class="fas fa-circle-notch fa-spin" aria-hidden="true"></span>
+			<span class="change-list-state-message">{{lang.change_center.loading}}</span>
+			<button type="button" id="change-list-retry" class="ui-button ui-widget ui-corner-all" hidden>
+				<span class="fas fa-redo" aria-hidden="true"></span> {{lang.ux.retry_action}}
+			</button>
+		</div>
+		<table class="overview hover order-column display compact" id="change-center-table" data-ux-table data-page-size="20" aria-busy="true" hidden>
 			<thead>
 			<tr class="overviewHead">
 				<th>ID</th>
@@ -24,14 +67,16 @@
 				<th>{{lang.words.service|title()}}</th>
 				<th>{{lang.words.server|title()}}</th>
 				<th>{{lang.words.status|title()}}</th>
+				<th>{{lang.change_center.drift}}</th>
 				<th>{{lang.words.user|title()}}</th>
 				<th>{{lang.words.date|title()}}</th>
-				<th>{{lang.words.action|title()}}</th>
+				<th data-sortable="false">{{lang.words.action|title()}}</th>
 			</tr>
 			</thead>
 			<tbody></tbody>
 		</table>
 		<div id="change-center-empty" class="alert alert-warning" style="display:none;">{{lang.change_center.empty}}</div>
+		<div id="change-center-no-results" class="rw-empty-state" style="display:none;">{{lang.change_center.no_matching_changes}}</div>
 	</div>
 
 	<div class="alert alert-info change-center-intro">
@@ -50,8 +95,12 @@
 			<tr>
 				<th>{{lang.change_center.node}}</th>
 				<th>{{lang.change_center.role}}</th>
+				<th>{{lang.change_center.batch}}</th>
+				<th>{{lang.change_center.canary}}</th>
 				<th>{{lang.words.status|title()}}</th>
+				<th>{{lang.change_center.health_result}}</th>
 				<th>{{lang.change_center.result}}</th>
+				<th>{{lang.words.action|title()}}</th>
 			</tr>
 			</thead>
 			<tbody></tbody>
@@ -59,6 +108,16 @@
 	</div>
 	<h4>{{lang.change_center.diff}}</h4>
 	<div id="change-details-diff" class="change-diff" role="region" aria-label="{{lang.change_center.diff}}"></div>
+	<section id="change-details-drift-section">
+		<h4>{{lang.change_center.drift}}</h4>
+		<p class="change-form-help">{{lang.change_center.drift_help}}</p>
+		<div id="change-details-drift" class="change-diff" role="region" aria-label="{{lang.change_center.drift}}"></div>
+	</section>
+	<div class="change-section-heading">
+		<h4>{{lang.change_center.timeline}}</h4>
+		<span class="change-live-indicator"><span aria-hidden="true"></span>{{lang.change_center.live}}</span>
+	</div>
+	<div id="change-details-timeline" class="change-timeline" role="region" aria-live="polite"></div>
 	<h4>{{lang.change_center.validation}}</h4>
 	<pre id="change-details-validation"></pre>
 	<h4>{{lang.change_center.deployment}}</h4>
@@ -66,6 +125,52 @@
 	<h4>{{lang.change_center.rollback_output}}</h4>
 	<pre id="change-details-rollback"></pre>
 </div>
+
+<div id="change-schedule-dialog" title="{{lang.change_center.schedule_deployment}}" style="display:none;">
+	<p><label for="change-scheduled-at"><b>{{lang.change_center.start_time}}</b></label><br><input type="datetime-local" id="change-scheduled-at"></p>
+	<p><label for="change-window-end"><b>{{lang.change_center.window_end}}</b></label><br><input type="datetime-local" id="change-window-end"></p>
+	<p class="change-schedule-timezone"><span class="fas fa-globe" aria-hidden="true"></span> {{lang.change_center.local_timezone}}: <strong id="change-schedule-timezone"></strong></p>
+	<p class="change-form-help">{{lang.change_center.schedule_help}}</p>
+</div>
+
+<div id="change-audit-dialog" title="{{lang.change_center.audit_history}}" style="display:none;">
+	<div class="change-audit-filters">
+		<input type="search" id="change-audit-search" placeholder="{{lang.ux.search}}">
+		<select id="change-audit-service">
+			<option value="">{{lang.ux.all}}</option>
+			<option value="haproxy">HAProxy</option><option value="nginx">NGINX</option>
+			<option value="apache">Apache</option><option value="keepalived">Keepalived</option>
+		</select>
+		<input type="date" id="change-audit-from" title="{{lang.change_center.date_from}}">
+		<input type="date" id="change-audit-to" title="{{lang.change_center.date_to}}">
+		<button type="button" id="change-audit-refresh" class="ui-button ui-widget ui-corner-all"><span class="fas fa-sync" aria-hidden="true"></span> {{lang.words.refresh|title()}}</button>
+	</div>
+	<div class="change-audit-table">
+		<table><thead><tr><th>{{lang.words.date|title()}}</th><th>ID</th><th>{{lang.words.service|title()}}</th><th>{{lang.words.status|title()}}</th><th>{{lang.words.user|title()}}</th><th>{{lang.change_center.event}}</th></tr></thead><tbody></tbody></table>
+	</div>
+</div>
+
+{% if g.user_params['role']|int <= 2 %}
+<div id="change-webhooks-dialog" title="{{lang.change_center.webhooks}}" style="display:none;">
+	<div class="change-webhook-toolbar"><button type="button" id="change-webhook-new" class="ui-button ui-widget ui-corner-all"><span class="fas fa-plus" aria-hidden="true"></span> {{lang.words.add|title()}}</button></div>
+	<table class="change-webhook-table"><thead><tr><th>{{lang.words.name|title()}}</th><th>URL</th><th title="{{lang.change_center.webhook_status_help}}">{{lang.change_center.webhook_delivery}} <span class="fas fa-info-circle" aria-hidden="true"></span></th><th>{{lang.words.action|title()}}</th></tr></thead><tbody></tbody></table>
+	<form id="change-webhook-form" class="change-webhook-form" hidden>
+		<input type="hidden" id="change-webhook-id">
+		<label><b>{{lang.words.name|title()}}</b><input type="text" id="change-webhook-name" maxlength="255" required></label>
+		<label><b>URL</b><input type="url" id="change-webhook-url" maxlength="2048" required placeholder="https://automation.example/hooks/roxy-wi"></label>
+		<label><b>{{lang.change_center.webhook_secret}}</b><input type="password" id="change-webhook-secret" maxlength="4096" autocomplete="new-password"></label>
+		<label><b>{{lang.change_center.webhook_events}}</b><select id="change-webhook-events" multiple size="8">
+			<option value="*">{{lang.change_center.all_events}}</option>
+			<option value="change.scheduled">change.scheduled</option><option value="schedule.missed">schedule.missed</option>
+			<option value="deployment.started">deployment.started</option><option value="deployment.succeeded">deployment.succeeded</option><option value="deployment.failed">deployment.failed</option>
+			<option value="rollback.succeeded">rollback.succeeded</option><option value="rollback.failed">rollback.failed</option>
+			<option value="drift.detected">drift.detected</option><option value="drift.resolved">drift.resolved</option><option value="drift.check_failed">drift.check_failed</option>
+		</select></label>
+		<div class="change-webhook-checks"><label><input type="checkbox" id="change-webhook-enabled" checked> {{lang.words.enabled|title()}}</label><label><input type="checkbox" id="change-webhook-verify-tls" checked> {{lang.change_center.verify_tls}}</label></div>
+		<div class="change-webhook-form-actions"><button type="submit" class="ui-button ui-widget ui-corner-all change-primary-button">{{lang.words.save|title()}}</button><button type="button" id="change-webhook-form-cancel" class="ui-button ui-widget ui-corner-all">{{lang.words.cancel|title()}}</button></div>
+	</form>
+</div>
+{% endif %}
 
 <div id="change-confirm-dialog" title="{{lang.words.confirm|title()}}" style="display:none;">
 	<p class="change-confirm-message">
@@ -76,22 +181,54 @@
 
 <div id="change-center-i18n"
 	 data-details="{{lang.change_center.details}}"
+	 data-more-actions="{{lang.change_center.more_actions}}"
 	 data-validate="{{lang.words.check|title()}}"
 	 data-approve="{{lang.change_center.approve}}"
 	 data-deploy="{{lang.change_center.deploy}}"
+	 data-schedule="{{lang.change_center.schedule}}"
+	 data-cancel-schedule="{{lang.change_center.cancel_schedule}}"
+	 data-check-drift="{{lang.change_center.check_drift}}"
+	 data-export-report="{{lang.change_center.export_report}}"
 	 data-rollback="{{lang.words.rollback|title()}}"
 	 data-cancel="{{lang.words.cancel|title()}}"
 	 data-recover="{{lang.change_center.recover}}"
+	 data-pause="{{lang.change_center.pause}}"
+	 data-resume="{{lang.change_center.resume}}"
+	 data-promote="{{lang.change_center.promote}}"
+	 data-retry-node="{{lang.change_center.retry_node}}"
+	 data-rollback-node="{{lang.change_center.rollback_node}}"
+	 data-exclude-node="{{lang.change_center.exclude_node}}"
+	 data-include-node="{{lang.change_center.include_node}}"
 	 data-recovered="{{lang.change_center.recovered}}"
 	 data-confirm-deploy="{{lang.change_center.confirm_deploy}}"
+	 data-confirm-cancel-schedule="{{lang.change_center.confirm_cancel_schedule}}"
+	 data-confirm-drift="{{lang.change_center.confirm_drift}}"
 	 data-confirm-rollback="{{lang.change_center.confirm_rollback}}"
 	 data-confirm-cancel="{{lang.change_center.confirm_cancel}}"
 	 data-confirm-recover="{{lang.change_center.confirm_recover}}"
+	 data-confirm-pause="{{lang.change_center.confirm_pause}}"
+	 data-confirm-resume="{{lang.change_center.confirm_resume}}"
+	 data-confirm-promote="{{lang.change_center.confirm_promote}}"
+	 data-confirm-retry-node="{{lang.change_center.confirm_retry_node}}"
+	 data-confirm-rollback-node="{{lang.change_center.confirm_rollback_node}}"
+	 data-confirm-exclude-node="{{lang.change_center.confirm_exclude_node}}"
+	 data-confirm-include-node="{{lang.change_center.confirm_include_node}}"
+	 data-confirm-delete-webhook="{{lang.change_center.confirm_delete_webhook}}"
 	 data-confirm="{{lang.words.confirm|title()}}"
 	 data-operation-success="{{lang.change_center.operation_success}}"
 	 data-execution-mode="{{lang.change_center.execution_mode}}"
 	 data-execution-mode-rolling="{{lang.change_center.execution_modes.rolling}}"
 	 data-execution-mode-parallel="{{lang.change_center.execution_modes.parallel}}"
+	 data-batch-size="{{lang.change_center.batch_size}}"
+	 data-max-parallel="{{lang.change_center.max_parallel}}"
+	 data-manual-promotion="{{lang.change_center.manual_promotion}}"
+	 data-health-check="{{lang.change_center.health_check}}"
+	 data-health-mode-full="{{lang.change_center.health_check_modes.full}}"
+	 data-health-mode-config="{{lang.change_center.health_check_modes.config}}"
+	 data-health-mode-service="{{lang.change_center.health_check_modes.service}}"
+	 data-health-mode-none="{{lang.change_center.health_check_modes.none}}"
+	 data-canary="{{lang.change_center.canary}}"
+	 data-excluded="{{lang.change_center.statuses.excluded}}"
 	 data-role-master="{{lang.change_center.roles.master}}"
 	 data-role-slave="{{lang.change_center.roles.slave}}"
 	 data-role-standalone="{{lang.change_center.roles.standalone}}"
@@ -105,6 +242,11 @@
 	 data-pending-approval="{{lang.change_center.statuses.pending_approval}}"
 	 data-approved="{{lang.change_center.statuses.approved}}"
 	 data-deploying="{{lang.change_center.statuses.deploying}}"
+	 data-scheduled="{{lang.change_center.statuses.scheduled}}"
+	 data-schedule-missed="{{lang.change_center.statuses.schedule_missed}}"
+	 data-pause-requested="{{lang.change_center.statuses.pause_requested}}"
+	 data-paused="{{lang.change_center.statuses.paused}}"
+	 data-awaiting-promotion="{{lang.change_center.statuses.awaiting_promotion}}"
 	 data-deployment-interrupted="{{lang.change_center.statuses.deployment_interrupted}}"
 	 data-deployed="{{lang.change_center.statuses.deployed}}"
 	 data-failed="{{lang.change_center.statuses.failed}}"
@@ -113,7 +255,29 @@
 	 data-auto-rolled-back="{{lang.change_center.statuses.auto_rolled_back}}"
 	 data-rollback-failed="{{lang.change_center.statuses.rollback_failed}}"
 	 data-auto-rollback-failed="{{lang.change_center.statuses.auto_rollback_failed}}"
-	 data-cancelled="{{lang.change_center.statuses.cancelled}}"></div>
+	 data-cancelled="{{lang.change_center.statuses.cancelled}}"
+	 data-drift-unknown="{{lang.change_center.drift_statuses.unknown}}"
+	 data-drift-in-sync="{{lang.change_center.drift_statuses.in_sync}}"
+	 data-drift-drifted="{{lang.change_center.drift_statuses.drifted}}"
+	 data-drift-check-failed="{{lang.change_center.drift_statuses.check_failed}}"
+	 data-drift-not-applicable="{{lang.change_center.drift_not_applicable}}"
+	 data-schedule-deployment="{{lang.change_center.schedule_deployment}}"
+	 data-save="{{lang.words.save|title()}}"
+	 data-close="{{lang.words.close|title()}}"
+	 data-delete="{{lang.words.delete|title()}}"
+	 data-edit="{{lang.words.edit|title()}}"
+	 data-test="{{lang.words.test|title()}}"
+	 data-webhook-saved="{{lang.change_center.webhook_saved}}"
+	 data-webhook-test-queued="{{lang.change_center.webhook_test_queued}}"
+	 data-enabled="{{lang.words.enabled|title()}}"
+	 data-disabled="{{lang.words.disabled|title()}}"
+	 data-schedule-saved="{{lang.change_center.schedule_saved}}"
+	 data-loading="{{lang.change_center.loading}}"
+	 data-retry="{{lang.ux.retry_action}}"
+	 data-load-failed="{{lang.change_center.load_failed}}"
+	 data-no-matching-changes="{{lang.change_center.no_matching_changes}}"
+	 data-showing-changes="{{lang.change_center.showing_changes}}"
+	 data-invalid-schedule="{{lang.change_center.invalid_schedule}}"></div>
 <script src="{{ url_for('static', filename='js/change-center.js') }}"></script>
 {% endif %}
 {% endblock %}

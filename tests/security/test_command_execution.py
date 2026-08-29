@@ -166,11 +166,29 @@ def test_nettools_tcp_check_uses_argument_array(monkeypatch):
 
 
 @pytest.mark.security
+def test_nettools_streamed_ping_keeps_formatting_and_escapes_command_output(app, monkeypatch):
+    monkeypatch.setattr(
+        nettools,
+        'stream_local',
+        lambda args: iter([b'PING example.test <script>alert(1)</script>\n64 bytes time=1 ms\n']),
+    )
+
+    with app.test_request_context('/nettools/icmp'):
+        response = nettools.ping_from_server('localhost', 'example.test', 'ping')
+        output = response.get_data(as_text=True)
+
+    assert '<span style="color: var(--link-dark-blue);' in output
+    assert '<script>' not in output
+    assert '&lt;script&gt;alert(1)&lt;/script&gt;' in output
+    assert '<div class="ping_pre">' not in output
+
+
+@pytest.mark.security
 def test_nettools_dns_check_filters_output_in_python(monkeypatch):
     calls = []
     dig_output = (
         '; unrelated diagnostic\n'
-        'example.test. 300 IN A 192.0.2.10\n'
+        'example.test. 300 IN A 192.0.2.10 <script>alert(1)</script>\n'
         ';; SERVER: 192.0.2.53#53\n'
     )
     monkeypatch.setattr(
@@ -185,8 +203,29 @@ def test_nettools_dns_check_filters_output_in_python(monkeypatch):
 
     assert 'unrelated diagnostic' not in response
     assert '192.0.2.10' in response
+    assert '<script>' not in response
+    assert '&lt;script&gt;alert(1)&lt;/script&gt;' in response
     assert 'From NS server' in response
     assert calls == [(['dig', 'example.test', 'a'], {'timeout': 10})]
+
+
+@pytest.mark.security
+def test_nettools_whois_escapes_external_registry_values(monkeypatch):
+    whois_payload = {
+        'domain_name': '<script>alert(1)</script>',
+        'registrar': 'Example & Sons',
+        'creation_date': '2024-01-01',
+        'expiration_date': '2027-01-01',
+        'name_servers': ['ns1.example.test'],
+        'status': 'active',
+    }
+    monkeypatch.setattr(nettools.whois, 'whois', lambda domain: __import__('json').dumps(whois_payload))
+
+    response = nettools.whois_check('example.test')
+
+    assert '<script>' not in response
+    assert '&lt;script&gt;alert(1)&lt;/script&gt;' in response
+    assert 'Example &amp; Sons' in response
 
 
 @pytest.mark.security

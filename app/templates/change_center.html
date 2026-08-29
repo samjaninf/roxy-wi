@@ -15,12 +15,8 @@
 		</a>
 	</div>
 	{% else %}
-	<div class="alert alert-info change-center-intro">
-		{{lang.change_center.intro}}
-	</div>
-
 	<div id="change-center" data-user-id="{{g.user_params['user_id']}}" data-role="{{g.user_params['role']}}">
-		<table class="overview hover order-column display compact" id="change-center-table">
+		<table class="overview hover order-column display compact" id="change-center-table" data-ux-table data-searchable="true" data-page-size="20">
 			<thead>
 			<tr class="overviewHead">
 				<th>ID</th>
@@ -36,6 +32,10 @@
 			<tbody></tbody>
 		</table>
 		<div id="change-center-empty" class="alert alert-warning" style="display:none;">{{lang.change_center.empty}}</div>
+	</div>
+
+	<div class="alert alert-info change-center-intro">
+		{{lang.change_center.intro}}
 	</div>
 	{% endif %}
 </div>

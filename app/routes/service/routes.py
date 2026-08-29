@@ -1,7 +1,7 @@
 from typing import Union
 
 import distro
-from flask import render_template, request, g
+from flask import render_template, request, g, jsonify
 from flask_jwt_extended import jwt_required
 from flask_pydantic import validate
 from pydantic import IPvAnyAddress
@@ -37,11 +37,96 @@ if not app.config['TESTING']:
     bp.add_url_rule('/letsencrypts', view_func=LetsEncryptsView.as_view('le_webs'), methods=['GET'])
 
 
+def _service_status_payload(result):
+    """Normalize MethodView return values for the batch status endpoint."""
+    status_code = 200
+    if isinstance(result, tuple):
+        result, status_code = result[0], result[1]
+    if hasattr(result, 'get_json'):
+        payload = result.get_json(silent=True)
+    else:
+        payload = result
+    if not isinstance(payload, dict):
+        payload = {'status': 'failed', 'error': str(payload)}
+    if status_code >= 400:
+        payload.setdefault('status', 'failed')
+    payload['http_status'] = status_code
+    return payload
+
+
 @bp.before_request
 @jwt_required()
 def before_request():
     """ Protect all the admin endpoints. """
     pass
+
+
+@bp.post('/<service>/statuses')
+@check_services
+@get_user_params()
+def service_statuses(service):
+    """Return status snapshots for multiple service servers in one browser request.
+    ---
+    tags:
+      - Service
+    parameters:
+      - in: path
+        name: service
+        required: true
+        type: string
+      - in: body
+        name: body
+        required: true
+        schema:
+          type: object
+          required: [server_ids]
+          properties:
+            server_ids:
+              type: array
+              maxItems: 100
+              items:
+                type: integer
+    responses:
+      200:
+        description: A status result for every requested server
+      400:
+        description: Invalid server_ids payload
+    """
+    body = request.get_json(silent=True) or {}
+    server_ids = body.get('server_ids')
+    if not isinstance(server_ids, list) or not server_ids or len(server_ids) > 100:
+        return jsonify({'status': 'failed', 'error': 'server_ids must be a non-empty list with at most 100 items'}), 400
+
+    normalized_ids = []
+    for server_id in server_ids:
+        if isinstance(server_id, bool):
+            return jsonify({'status': 'failed', 'error': 'server_ids must contain integer IDs'}), 400
+        try:
+            server_id = int(server_id)
+        except (TypeError, ValueError):
+            return jsonify({'status': 'failed', 'error': 'server_ids must contain integer IDs'}), 400
+        if server_id not in normalized_ids:
+            normalized_ids.append(server_id)
+
+    service_view = ServiceView()
+    results = []
+    for server_id in normalized_ids:
+        try:
+            result = service_view.get(service, server_id)
+            payload = _service_status_payload(result)
+        except Exception as exc:
+            payload = {
+                'server_id': server_id,
+                'service': service,
+                'status': 'failed',
+                'error': str(exc),
+                'http_status': 500,
+            }
+        payload.setdefault('server_id', server_id)
+        payload.setdefault('service', service)
+        results.append(payload)
+
+    return jsonify({'status': 'success', 'data': results})
 
 
 @bp.route('/<service>', defaults={'serv': None})

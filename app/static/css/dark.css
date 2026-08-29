@@ -13,6 +13,36 @@ h3 {
     background-color: #1b1b1b !important;
     color: #f0f0f0 !important;
 }
+.top-menu {
+    border-right-color: #343434;
+}
+.app-nav-header {
+    border-bottom-color: #343434;
+}
+.app-nav-search input {
+    color: #f0f0f0;
+    background: #242424;
+    border-color: #444;
+}
+.app-nav-search kbd,
+.app-nav-collapse,
+.nav-group-toggle,
+.nav-submenu-toggle {
+    color: #b8b8b8 !important;
+    background: transparent !important;
+}
+.nav-group-toggle:hover,
+.nav-submenu-toggle:hover,
+.app-nav-collapse:hover {
+    background: #2b2b2b !important;
+}
+.v_menu {
+    border-left-color: #444;
+}
+.menu a.menu-active {
+    background-color: #303030 !important;
+    color: #f0f0f0 !important;
+}
 .menu a:hover {
 	background: #1f1f1f !important;
 	color: #f0f0f0 !important;
@@ -83,3 +113,72 @@ h3 {
 .ui-menu, .ui-menu-item {
     background: #797878 !important;
 }
+
+:root {
+    --rw-surface: #1f1f1f;
+    --rw-surface-muted: #2a2a2a;
+    --rw-border: #444;
+    --rw-text-muted: #b7bdc3;
+}
+.rw-card,
+.rw-panel,
+.service-actions-menu,
+.app-mobile-nav-toggle {
+    color: #f0f0f0;
+    background: var(--rw-surface);
+}
+.rw-button-secondary,
+.rw-icon-button {
+    color: #f0f0f0 !important;
+    border-color: #555 !important;
+    background: #303030 !important;
+}
+
+.config-editor-card {
+    border-color: #353b43;
+    background: #15191d;
+}
+.config-editor-card-header {
+    border-bottom-color: #373d45;
+    background: #202429;
+}
+.config-editor-file-name { color: #f5f7fa; }
+.config-editor-file-path { color: #a9bfd7; }
+.config-editor-state.is-saved { color: #58df8b; }
+.config-editor-state.is-dirty { color: #ffc857; }
+.config-editor-shell,
+.config-editor-shell textarea,
+.config-editor-shell .CodeMirror {
+    background: #15191d;
+    color: #f4f7fb;
+}
+.config-editor-shell .CodeMirror-gutters {
+    border-right-color: #2d333b;
+    background: #15191d;
+}
+.config-editor-shell .CodeMirror-linenumber { color: #69717c; }
+.config-editor-shell .CodeMirror-guttermarker-subtle { color: #818b98; }
+.config-editor-shell .CodeMirror-cursor { border-left-color: #f4f7fb; }
+.config-editor-shell .CodeMirror-selected,
+.config-editor-shell .CodeMirror-focused .CodeMirror-selected { background: #264f78 !important; }
+.config-editor-shell .CodeMirror-matchingbracket {
+    color: #fff !important;
+    background: #315f75;
+    outline-color: #66d9ef;
+}
+.config-editor-shell .cm-keyword,
+.config-editor-shell .cm-variable-2 { color: #66d9ef; }
+.config-editor-shell .cm-string-2 { color: #7ee787; }
+.config-editor-shell .cm-string { color: #a6e3a1; }
+.config-editor-shell .cm-number,
+.config-editor-shell .cm-atom { color: #cba6f7; }
+.config-editor-shell .cm-variable,
+.config-editor-shell .cm-def { color: #f4f7fb; }
+.config-editor-shell .cm-meta { color: #f9c74f; }
+.config-editor-shell .cm-comment { color: #7f8c98; }
+.config-editor-shell .CodeMirror-dialog {
+    border-color: #373d45;
+    background: #202429;
+    color: #f4f7fb;
+}
+.config-editor-shell .CodeMirror-dialog input { color: #f4f7fb; }

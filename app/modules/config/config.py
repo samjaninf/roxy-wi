@@ -603,7 +603,7 @@ def show_config(server_ip: str, service: str, config_file_name: str, configver: 
 	return render_template('ajax/config_show.html', **kwargs)
 
 
-def show_config_files(server_ip: str, service: str, config_file_name: str) -> str:
+def show_config_files(server_ip: str, service: str, config_file_name: str, edit_mode: bool = False) -> str:
 	"""
 	Displays the configuration files for a given server IP, service, and config file name.
 
@@ -627,7 +627,7 @@ def show_config_files(server_ip: str, service: str, config_file_name: str) -> st
 
 	return render_template(
 		'ajax/show_configs_files.html', serv=server_ip, service=service, return_files=return_files, lang=lang,
-		config_file_name=config_file_name, path_dir=service_config_dir
+		config_file_name=config_file_name, path_dir=service_config_dir, edit_mode=edit_mode
 	)
 
 

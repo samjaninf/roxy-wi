@@ -1,5 +1,30 @@
 {% import 'languages/'+lang|default('en')+'.html' as lang %}
 {% from 'include/input_macros.html' import input %}
+{% if edit_mode|default(false) %}
+<div class="config-editor-file-picker">
+	<label for="editor_config_file_name">{{lang.phrases.config_file_name}}:</label>
+	<select required id="editor_config_file_name">
+		{% for file in return_files.split() %}
+		<option value="{{ file.replace('/', '92') }}"{% if file == config_file_name %} selected{% endif %}>{{ file }}</option>
+		{% endfor %}
+	</select>
+	<button type="button" class="rw-button rw-button-secondary" id="open-editor-config-file">{{lang.words.open|title()}}</button>
+</div>
+<script>
+	(function () {
+		const editorService = {{ service|tojson }};
+		const editorServer = {{ serv|tojson }};
+		const fileSelect = $('#editor_config_file_name');
+		fileSelect.select2({width: 'resolve'});
+		$('#open-editor-config-file').on('click', function () {
+			const selectedFile = fileSelect.val();
+			if (selectedFile) {
+				window.location.assign('/config/' + encodeURIComponent(editorService) + '/' + encodeURIComponent(editorServer) + '/edit/' + selectedFile);
+			}
+		});
+	})();
+</script>
+{% else %}
 <div style="margin-top: 20px; margin-left: 15px;">
 	{% if 'cannot access' not in return_files %}
 		{% if config_file_name == '' %}
@@ -111,3 +136,4 @@
 	$( "select" ).selectmenu();
 	$("#config_file_name").selectmenu("destroy");
 </script>
+{% endif %}

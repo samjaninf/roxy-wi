@@ -1,166 +1,234 @@
-<div class="top-menu">
-	<div class="LogoText">
-		<span id="logo_text">
-			<a href="https://roxy-wi.org" title="Roxy-WI site" target="_blank">
-				<img src="{{ url_for('static', filename='images/logo_menu.png') }}" class="menu-logo" alt="logo" width="110" />
-			</a>
-		</span>
+<aside class="top-menu" id="app-navigation" aria-label="{{ lang.menu_links.navigation.label }}">
+	<div class="app-nav-header">
+		<a href="{{ url_for('overview.index') }}" class="app-nav-logo" title="Roxy-WI">
+			<img src="{{ url_for('static', filename='images/logo_menu.png') }}" class="menu-logo" alt="Roxy-WI" width="110">
+		</a>
+		<button type="button" id="hide_menu" class="app-nav-collapse"
+				title="{{ lang.menu_links.navigation.collapse }}"
+				aria-label="{{ lang.menu_links.navigation.collapse }}"
+				data-collapse-title="{{ lang.menu_links.navigation.collapse }}"
+				data-expand-title="{{ lang.menu_links.navigation.expand }}">
+			<span class="fas fa-angle-double-left" aria-hidden="true"></span>
+		</button>
 	</div>
-	<div id="top-link" class="top-link">
-		<nav id="menu">
-			<ul class="menu">
-				<li>
-                    <a href="{{ url_for('overview.index') }}" title="{{lang.menu_links.overview.title}}"
-                       class="{% if request.url_rule.endpoint == 'overview.index' %} menu-active{% endif %}"
-                       id="menu-overview"
-                    >
-                        <img src="{{ url_for('static', filename='images/roxy_icon.png') }}" class="menu-vendor-logo" style="width: 19px;">
-                        {{lang.menu_links.overview.link}}
-                    </a>
-                </li>
-				{% if g.user_params['role'] <= 3 %}
-				<li>
-					<a href="{{ url_for('change.index') }}" title="{{lang.menu_links.change_center.title}}"
-					   class="{% if request.url_rule.endpoint == 'change.index' %} menu-active{% endif %}">
-						<span class="fas fa-tasks" aria-hidden="true"></span>
-						{{lang.menu_links.change_center.link}}
-					</a>
-				</li>
-				{% endif %}
-				{% if '5' in g.user_params['user_services'] %}
-				{% if g.user_params['role'] <= 3 %}
-				{% endif %}
-				<li><a href="{{ url_for('ha.ha_cluster', service='cluster') }}" title="{{lang.menu_links.ha.title}}" class="keepalived {% if request.url_rule.endpoint == 'ha.ha_cluster' %} menu-active{% endif %}">HA {{lang.words.cluster}}</a></li>
-				{% endif %}
-				{% if '1' in g.user_params['user_services'] %}
-				<li class="p_menu">
-					<a href="{{ url_for('service.services', service='haproxy') }}" title="{{lang.menu_links.hapservers.haproxy.title}}" id="menu-haproxy">
-                        <img src="{{ url_for('static', filename='images/HAProxy_icon.png') }}" class="menu-vendor-logo">
-                        HAProxy
-                    </a>
-					<ul class="v_menu">
-						<li><a href="{{ url_for('service.services', service='haproxy') }}" title="{{lang.menu_links.hapservers.haproxy.title}}" class="head-submenu">{{lang.menu_links.hapservers.link}}</a> </li>
-						<li><a href="{{ url_for('config.config', service='haproxy') }}" title="{{lang.menu_links.config.haproxy.title}}" class="head-submenu">{{lang.menu_links.config.link}}</a></li>
-						<li><a href="{{ url_for('main.stats', service='haproxy') }}" title="{{lang.menu_links.stats.haproxy.title}}" class="head-submenu">{{lang.menu_links.stats.link}}</a></li>
-						<li><a href="{{ url_for('logs.logs', service='haproxy') }}" title="HAProxy {{lang.menu_links.logs.title}}" class="head-submenu">{{lang.menu_links.logs.link}}</a></li>
-						<li><a href="{{ url_for('runtime.runtimeapi') }}" title="Runtime API" class="head-submenu">Runtime API</a></li>
-						<li><a href="{{ url_for('metric.metrics', service='haproxy') }}" title="HAProxy {{lang.menu_links.metrics.title}}" class="head-submenu">{{lang.menu_links.metrics.link}}</a></li>
+	<div class="app-nav-search">
+		<span class="fas fa-search app-nav-search-icon" aria-hidden="true"></span>
+		<input type="search" id="app-navigation-search" placeholder="{{ lang.menu_links.navigation.search }}"
+			   aria-label="{{ lang.menu_links.navigation.search }}" autocomplete="off">
+		<kbd>/</kbd>
+	</div>
+	<nav id="menu" class="app-nav-scroll">
+		<ul class="menu">
+			<li class="nav-group is-open" data-nav-group="operations">
+				<button type="button" class="nav-group-toggle" aria-expanded="true">
+					<span class="nav-group-label">{{ lang.menu_links.navigation.operations }}</span>
+					<span class="fas fa-chevron-down nav-chevron" aria-hidden="true"></span>
+				</button>
+				<ul class="nav-group-items">
+					<li class="nav-item" data-nav-search="{{ lang.menu_links.overview.link|lower }}">
+						<a href="{{ url_for('overview.index') }}" title="{{ lang.menu_links.overview.title }}"
+						   class="nav-link{% if request.url_rule.endpoint == 'overview.index' %} menu-active{% endif %}" id="menu-overview">
+							<img src="{{ url_for('static', filename='images/roxy_icon.png') }}" class="menu-vendor-logo" alt="">
+							<span class="nav-label">{{ lang.menu_links.overview.link }}</span>
+						</a>
+					</li>
 					{% if g.user_params['role'] <= 3 %}
-						<li><a href="{{ url_for('add.add', service='haproxy') }}#proxy" title="{{lang.menu_links.add_proxy.title}}" class="head-submenu" id="add1">{{lang.menu_links.add_proxy.link}}</a></li>
-						<li><a href="{{ url_for('config.versions', service='haproxy') }}" title="{{lang.menu_links.versions.haproxy.title}}" class="head-submenu">{{lang.menu_links.versions.link}}</a></li>
-						<li><a href="{{ url_for('service.ssl_service', service='haproxy') }}" title="{{lang.menu_links.ssl.title}}" class="head-submenu" id="add3">{{lang.menu_links.ssl.link}}</a></li>
-						<li><a href="{{ url_for('add.add', service='haproxy') }}#lists" title="{{lang.menu_links.lists.title}}" class="head-submenu" id="add7">{{lang.menu_links.lists.link}}</a></li>
-						<li><a href="{{ url_for('waf.waf', service='haproxy') }}" title="Web application firewall" class="head-submenu">WAF</a> </li>
+					<li class="nav-item" data-nav-search="{{ lang.menu_links.change_center.link|lower }}">
+						<a href="{{ url_for('change.index') }}" title="{{ lang.menu_links.change_center.title }}"
+						   class="nav-link{% if request.url_rule.endpoint == 'change.index' %} menu-active{% endif %}">
+							<span class="fas fa-file-signature nav-icon" aria-hidden="true"></span><span class="nav-label">{{ lang.menu_links.change_center.link }}</span>
+						</a>
+					</li>
 					{% endif %}
-					</ul>
-				</li>
-				{% endif %}
-				{% if '2' in g.user_params['user_services'] %}
-				<li class="p_menu">
-					<a href="{{ url_for('service.services', service='nginx') }}" title="{{lang.menu_links.hapservers.nginx.title}}"  id="menu-nginx">
-                        <img src="{{ url_for('static', filename='images/NGINX_icon.png') }}" class="menu-vendor-logo">
-                        NGINX
-                    </a>
-					<ul class="v_menu">
-						<li><a href="{{ url_for('service.services', service='nginx') }}" title="{{lang.menu_links.hapservers.nginx.title}}" class="head-submenu">{{lang.menu_links.hapservers.link}}</a></li>
-						<li><a href="{{ url_for('config.config', service='nginx') }}" title="{{lang.menu_links.config.nginx.title}}" class="head-submenu">{{lang.menu_links.config.link}}</a></li>
-						<li><a href="{{ url_for('main.stats', service='nginx') }}" title="{{lang.menu_links.stats.nginx.title}}" class="head-submenu">{{lang.menu_links.stats.link}}</a></li>
-						<li><a href="{{ url_for('logs.logs', service='nginx') }}" title="NGINX {{lang.menu_links.logs.title}}" class="head-submenu">{{lang.menu_links.logs.link}}</a></li>
-						<li><a href="{{ url_for('metric.metrics', service='nginx') }}" title="NGINX {{lang.menu_links.metrics.title}}" class="head-submenu">{{lang.menu_links.metrics.link}}</a></li>
-						{% if g.user_params['role'] <= 3 %}
-						<li><a href="{{ url_for('add.add', service='nginx') }}#proxy" title="{{lang.menu_links.add_proxy.title}}" class="head-submenu">{{lang.menu_links.add_proxy.link}}</a></li>
-						<li><a href="{{ url_for('config.versions', service='nginx') }}" title="{{lang.menu_links.versions.nginx.title}}" class="head-submenu">{{lang.menu_links.versions.link}}</a></li>
-						<li><a href="{{ url_for('service.ssl_service', service='nginx') }}" title="{{lang.menu_links.ssl.title}}" class="head-submenu">{{lang.menu_links.ssl.link}}</a></li>
-						<li><a href="{{ url_for('waf.waf', service='nginx') }}" title="Web application firewall" class="head-submenu">WAF</a> </li>
-						{% endif %}
-					</ul>
-				</li>
-				{% endif %}
-				{% if '4' in g.user_params['user_services'] %}
-				<li class="p_menu">
-					<a href="{{ url_for('service.services', service='apache') }}" title="{{lang.menu_links.hapservers.apache.title}}" class="apache-menu">Apache</a>
-					<ul class="v_menu">
-						<li><a href="{{ url_for('service.services', service='apache') }}" title="{{lang.menu_links.hapservers.apache.title}}" class="head-submenu">{{lang.menu_links.hapservers.link}}</a></li>
-						<li><a href="{{ url_for('config.config', service='apache') }}" title="{{lang.menu_links.config.apache.title}}" class="head-submenu">{{lang.menu_links.config.link}}</a></li>
-						<li><a href="{{ url_for('main.stats', service='apache') }}" title="{{lang.menu_links.stats.apache.title}}" class="head-submenu">{{lang.menu_links.stats.link}}</a></li>
-						<li><a href="{{ url_for('logs.logs', service='apache') }}" title="Apache {{lang.menu_links.logs.title}}" class="head-submenu">{{lang.menu_links.logs.link}}</a></li>
-						<li><a href="{{ url_for('metric.metrics', service='apache') }}" title="Apache {{lang.menu_links.metrics.title}}" class="head-submenu">{{lang.menu_links.metrics.link}}</a></li>
-						{% if g.user_params['role'] <= 3 %}
-						<li><a href="{{ url_for('config.versions', service='apache') }}" title="{{lang.menu_links.versions.apache.title}}" class="head-submenu">{{lang.menu_links.versions.link}}</a></li>
-						<li><a href="{{ url_for('service.ssl_service', service='apache') }}" title="{{lang.menu_links.ssl.title}}" class="head-submenu" id="add3">{{lang.menu_links.ssl.link}}</a></li>
-						{% endif %}
-					</ul>
-				</li>
-				{% endif %}
-                {% if '6' in g.user_params['user_services'] %}
-				{% if g.user_params['role'] <= 2 %}
-                    <li><a href="{{ url_for('udp.udp_listener', service='udp') }}" title="{{lang.menu_links.udp.title}}" class="balance {% if request.url_rule.endpoint == 'udp.udp_listener' %} menu-active{% endif %}">{{lang.menu_links.udp.title}}</a></li>
-				{% endif %}
-				{% endif %}
-				{% if '3' in g.user_params['user_services'] %}
-				{% if g.user_params['role'] <= 2 %}
-				<li class="p_menu">
-                    <a href="{{ url_for('service.services', service='keepalived') }}" title="{{lang.menu_links.hapservers.keepalived.title}}" id="menu-keepalived">
-                        <img src="{{ url_for('static', filename='images/keepalived_icon.png') }}" class="menu-vendor-logo" style="margin: 0 5px 0 0;">
-                        Keepalived
-                    </a>
-					<ul class="v_menu">
-						<li><a href="{{ url_for('service.services', service='keepalived') }}" title="{{lang.menu_links.hapservers.keepalived.title}}" class="head-submenu">{{lang.menu_links.hapservers.link}}</a> </li>
-						<li><a href="{{ url_for('config.config', service='keepalived') }}" title="{{lang.menu_links.config.keepalived.title}}" class="head-submenu">{{lang.menu_links.config.link}}</a></li>
-						<li><a href="{{ url_for('logs.logs', service='keepalived') }}" title="Keepalived {{lang.menu_links.stats.title}}" class="head-submenu">{{lang.menu_links.logs.link}}</a></li>
-						<li><a href="{{ url_for('config.versions', service='keepalived') }}" title="{{lang.menu_links.versions.keepalived.title}}" class="head-submenu keepalived_versions">{{lang.menu_links.versions.link}}</a></li>
-					</ul>
-				</li>
-				{% endif %}
-				{% endif %}
-				<li class="p_menu">
-					<a href="{{ url_for('smon.smon_main_dashboard') }}" title="{{lang.menu_links.monitoring.title}}" class="stats">{{lang.menu_links.monitoring.link}}</a>
-					<ul class="v_menu">
-						<li><a href="{{ url_for('smon.smon_main_dashboard') }}" title="{{lang.menu_links.monitoring.smon.dashboard}}" class="head-submenu">{{lang.menu_links.monitoring.smon.dashboard}}</a></li>
-						<li><a href="{{ url_for('smon.status_page') }}" title="{{lang.menu_links.monitoring.smon.status_page}}" class="head-submenu">{{lang.menu_links.monitoring.smon.status_page}}</a></li>
-						<li><a href="{{ url_for('smon.smon_history') }}" title="{{lang.menu_links.monitoring.smon.history}}" class="head-submenu">{{lang.menu_links.monitoring.smon.history}}</a></li>
-						{% if g.user_params['role'] <= 3 %}
-						<li><a href="{{ url_for('smon.agent') }}" title="{{lang.menu_links.monitoring.smon.agent}}" class="head-submenu">{{lang.menu_links.monitoring.smon.agent}}</a></li>
-						<li><a href="{{ url_for('channel.channels') }}" title="{{lang.words.channels|title()}} {{ lang.words.for }} Checker {{ lang.words.and }} SMON" class="head-submenu">{{lang.words.channels|title}}</a></li>
-						<li><a href="{{ url_for('checker.checker_settings') }}" title="Checker: {{lang.words.settings}}" class="head-submenu">Checker: {{lang.words.settings|title()}}</a></li>
-						{% endif %}
-						<li><a href="{{ url_for('checker.checker_history') }}" title="{{lang.menu_links.monitoring.checker_history}}" class="head-submenu">{{lang.menu_links.monitoring.checker_history}}</a></li>
-						<li><a href="{{ url_for('portscanner.portscanner') }}" title="{{lang.menu_links.monitoring.port_scan}}" class="head-submenu">{{lang.menu_links.monitoring.port_scan}}</a></li>
-						<li><a href="{{ url_for('main.nettools') }}" title="{{lang.menu_links.monitoring.net_tools}}" class="head-submenu">{{lang.menu_links.monitoring.net_tools}}</a></li>
-					</ul>
-				</li>
-				{% if g.user_params['role'] <= 2 %}
-				<li class="p_menu">
-					<a href="{{ url_for('install.install_monitoring') }}" title="{{lang.menu_links.servers.title}}" class="hap-menu">{{lang.words.installation|title()}}</a>
-					<ul class="v_menu">
-						<li><a href="{{ url_for('install.install_monitoring') }}#service" title="{{lang.words.servers|title()}}: {{lang.words.proxy|title()}} {{lang.words.services}} {{lang.words.installation}}" class="service installproxy head-submenu">{{lang.words.proxy|title()}} {{lang.words.services}}</a> </li>
-						<li><a href="{{ url_for('install.install_monitoring') }}#monitoring" title="{{lang.words.servers|title()}}: {{lang.words.monitoring|title()}} {{lang.words.services}} {{lang.words.installation}}" class="monitoring installmon head-submenu">{{lang.words.monitoring|title()}}</a> </li>
-						<li><a href="{{ url_for('install.install_monitoring') }}#geolite2" title="{{lang.words.installation|title()}} GeoLite2" class="geolite2 installgeo head-submenu">GeoLite2</a> </li>
-					</ul>
-				</li>
-				{% endif %}
-				{% if g.user_params['role'] <= 2 %}
-				<li class="p_menu" id="admin-area">
-					<a href="{{ url_for('admin.admin') }}#users" title="{{lang.menu_links.admin_area.title}}" class="admin">{{lang.menu_links.admin_area.link}}</a>
-					<ul class="v_menu">
-						<li><a href="{{ url_for('admin.admin') }}#users" title="{{lang.words.admin_area|title()}}: {{lang.words.manage|title()}} {{lang.words.users2}}" class="users head-submenu" id="admin-area-users">{{lang.words.users|title()}}</a></li>
-						<li><a href="{{ url_for('admin.admin') }}#servers" title="{{lang.words.admin_area|title()}}: {{lang.words.manage|title()}} {{lang.words.servers2}}" class="servers head-submenu" id="admin-area-servers">{{lang.words.servers|title()}}</a></li>
-						<li><a href="{{ url_for('admin.admin') }}#ssh" title="{{lang.words.admin_area|title()}}: {{lang.words.manage|title()}} SSH {{lang.words.creds2}}" class="ssh head-submenu" id="admin-area-ssh">SSH {{lang.words.creds|title()}}</a></li>
-						<li><a href="{{ url_for('admin.admin') }}#settings" title="{{lang.words.admin_area|title()}}: {{lang.words.manage|title()}} Roxy-WI {{lang.words.settings2}}" class="settings head-submenu" id="admin-area-settings">{{lang.words.settings|title()}}</a></li>
-                        <li><a href="{{ url_for('logs.logs_internal') }}" title="{{lang.words.admin_area|title()}}: {{lang.words.view|title()}} {{lang.words.internal2}} {{lang.words.logs2}}" class="head-submenu" id="admin-area-logs">{{lang.words.internal|title()}} {{lang.words.logs}}</a></li>
-                        <li><a href="{{ url_for('admin.admin') }}#backup" title="{{lang.words.servers|title()}}: {{lang.words.backup|title()}} {{lang.words.configs2}}" class="backup head-submenu">{{lang.words.backup|title()}}</a> </li>
-                        {% if g.user_params['role'] <= 1 %}
-                        <li><a href="{{ url_for('admin.admin') }}#groups" title="{{lang.words.admin_area|title()}}: {{lang.words.manage|title()}} {{lang.words.groups3}}" class="groups head-submenu" id="admin-area-groups">{{lang.words.groups|title()}}</a></li>
-                        <li><a href="{{ url_for('admin.admin') }}#tools" title="{{lang.words.admin_area|title()}}: {{lang.words.manage|title()}} Roxy-WI {{lang.words.tools}}" class="tools head-submenu" id="admin-area-services">{{lang.words.tools|title()}}</a></li>
-						<li><a href="{{ url_for('admin.admin') }}#updatehapwi" title="{{lang.words.admin_area|title()}}: {{lang.words.w_update|title()}} Roxy-WI" class="updatehapwi head-submenu" id="admin-area-update">{{lang.words.w_update|title()}}</a></li>
-						{% if oidc_available %}
-						<li><a href="{{ url_for('admin.admin') }}#oidc" title="{{lang.words.admin_area|title()}}: OIDC" class="oidc head-submenu" id="admin-area-oidc">OIDC</a></li>
-						{% endif %}
-                        {% endif %}
-					</ul>
-				</li>
-				{% endif %}
-			</ul>
-		</nav>
-	</div>
-</div>
+					{% if '5' in g.user_params['user_services'] %}
+					<li class="nav-item" data-nav-search="ha {{ lang.words.cluster|lower }}">
+						<a href="{{ url_for('ha.ha_cluster', service='cluster') }}" title="{{ lang.menu_links.ha.title }}"
+						   class="nav-link{% if request.url_rule.endpoint == 'ha.ha_cluster' %} menu-active{% endif %}">
+							<span class="fas fa-project-diagram nav-icon" aria-hidden="true"></span><span class="nav-label">HA {{ lang.words.cluster }}</span>
+						</a>
+					</li>
+					{% endif %}
+				</ul>
+			</li>
+
+			<li class="nav-group is-open" data-nav-group="services">
+				<button type="button" class="nav-group-toggle" aria-expanded="true">
+					<span class="nav-group-label">{{ lang.words.services|title() }}</span><span class="fas fa-chevron-down nav-chevron" aria-hidden="true"></span>
+				</button>
+				<ul class="nav-group-items">
+					{% if '1' in g.user_params['user_services'] %}
+					<li class="p_menu nav-service" data-nav-search="haproxy">
+						<div class="nav-service-row">
+							<a href="{{ url_for('service.services', service='haproxy') }}" title="{{ lang.menu_links.hapservers.haproxy.title }}" id="menu-haproxy" class="nav-link nav-service-link">
+								<img src="{{ url_for('static', filename='images/HAProxy_icon.png') }}" class="menu-vendor-logo" alt=""><span class="nav-label">HAProxy</span>
+							</a>
+							<button type="button" class="nav-submenu-toggle" aria-expanded="false" aria-label="HAProxy {{ lang.menu_links.navigation.submenu }}"><span class="fas fa-chevron-right nav-chevron" aria-hidden="true"></span></button>
+						</div>
+						<ul class="v_menu">
+							<li><a href="{{ url_for('service.services', service='haproxy') }}" title="{{ lang.menu_links.hapservers.haproxy.title }}" class="head-submenu">{{ lang.menu_links.hapservers.link }}</a></li>
+							<li><a href="{{ url_for('config.config', service='haproxy') }}" title="{{ lang.menu_links.config.haproxy.title }}" class="head-submenu">{{ lang.menu_links.config.link }}</a></li>
+							<li><a href="{{ url_for('main.stats', service='haproxy') }}" title="{{ lang.menu_links.stats.haproxy.title }}" class="head-submenu">{{ lang.menu_links.stats.link }}</a></li>
+							<li><a href="{{ url_for('logs.logs', service='haproxy') }}" title="HAProxy {{ lang.menu_links.logs.title }}" class="head-submenu">{{ lang.menu_links.logs.link }}</a></li>
+							<li><a href="{{ url_for('runtime.runtimeapi') }}" title="Runtime API" class="head-submenu">Runtime API</a></li>
+							<li><a href="{{ url_for('metric.metrics', service='haproxy') }}" title="HAProxy {{ lang.menu_links.metrics.title }}" class="head-submenu">{{ lang.menu_links.metrics.link }}</a></li>
+							{% if g.user_params['role'] <= 3 %}
+							<li><a href="{{ url_for('add.add', service='haproxy') }}#proxy" title="{{ lang.menu_links.add_proxy.title }}" class="head-submenu" id="add1">{{ lang.menu_links.add_proxy.link }}</a></li>
+							<li><a href="{{ url_for('config.versions', service='haproxy') }}" title="{{ lang.menu_links.versions.haproxy.title }}" class="head-submenu">{{ lang.menu_links.versions.link }}</a></li>
+							<li><a href="{{ url_for('service.ssl_service', service='haproxy') }}" title="{{ lang.menu_links.ssl.title }}" class="head-submenu" id="add3">{{ lang.menu_links.ssl.link }}</a></li>
+							<li><a href="{{ url_for('add.add', service='haproxy') }}#lists" title="{{ lang.menu_links.lists.title }}" class="head-submenu" id="add7">{{ lang.menu_links.lists.link }}</a></li>
+							<li><a href="{{ url_for('waf.waf', service='haproxy') }}" title="Web application firewall" class="head-submenu">WAF</a></li>
+							{% endif %}
+						</ul>
+					</li>
+					{% endif %}
+
+					{% if '2' in g.user_params['user_services'] %}
+					<li class="p_menu nav-service" data-nav-search="nginx">
+						<div class="nav-service-row">
+							<a href="{{ url_for('service.services', service='nginx') }}" title="{{ lang.menu_links.hapservers.nginx.title }}" id="menu-nginx" class="nav-link nav-service-link">
+								<img src="{{ url_for('static', filename='images/NGINX_icon.png') }}" class="menu-vendor-logo" alt=""><span class="nav-label">NGINX</span>
+							</a>
+							<button type="button" class="nav-submenu-toggle" aria-expanded="false" aria-label="NGINX {{ lang.menu_links.navigation.submenu }}"><span class="fas fa-chevron-right nav-chevron" aria-hidden="true"></span></button>
+						</div>
+						<ul class="v_menu">
+							<li><a href="{{ url_for('service.services', service='nginx') }}" title="{{ lang.menu_links.hapservers.nginx.title }}" class="head-submenu">{{ lang.menu_links.hapservers.link }}</a></li>
+							<li><a href="{{ url_for('config.config', service='nginx') }}" title="{{ lang.menu_links.config.nginx.title }}" class="head-submenu">{{ lang.menu_links.config.link }}</a></li>
+							<li><a href="{{ url_for('main.stats', service='nginx') }}" title="{{ lang.menu_links.stats.nginx.title }}" class="head-submenu">{{ lang.menu_links.stats.link }}</a></li>
+							<li><a href="{{ url_for('logs.logs', service='nginx') }}" title="NGINX {{ lang.menu_links.logs.title }}" class="head-submenu">{{ lang.menu_links.logs.link }}</a></li>
+							<li><a href="{{ url_for('metric.metrics', service='nginx') }}" title="NGINX {{ lang.menu_links.metrics.title }}" class="head-submenu">{{ lang.menu_links.metrics.link }}</a></li>
+							{% if g.user_params['role'] <= 3 %}
+							<li><a href="{{ url_for('add.add', service='nginx') }}#proxy" title="{{ lang.menu_links.add_proxy.title }}" class="head-submenu">{{ lang.menu_links.add_proxy.link }}</a></li>
+							<li><a href="{{ url_for('config.versions', service='nginx') }}" title="{{ lang.menu_links.versions.nginx.title }}" class="head-submenu">{{ lang.menu_links.versions.link }}</a></li>
+							<li><a href="{{ url_for('service.ssl_service', service='nginx') }}" title="{{ lang.menu_links.ssl.title }}" class="head-submenu">{{ lang.menu_links.ssl.link }}</a></li>
+							<li><a href="{{ url_for('waf.waf', service='nginx') }}" title="Web application firewall" class="head-submenu">WAF</a></li>
+							{% endif %}
+						</ul>
+					</li>
+					{% endif %}
+
+					{% if '4' in g.user_params['user_services'] %}
+					<li class="p_menu nav-service" data-nav-search="apache">
+						<div class="nav-service-row">
+							<a href="{{ url_for('service.services', service='apache') }}" title="{{ lang.menu_links.hapservers.apache.title }}" class="nav-link nav-service-link">
+								<span class="fas fa-feather-alt nav-icon" aria-hidden="true"></span><span class="nav-label">Apache</span>
+							</a>
+							<button type="button" class="nav-submenu-toggle" aria-expanded="false" aria-label="Apache {{ lang.menu_links.navigation.submenu }}"><span class="fas fa-chevron-right nav-chevron" aria-hidden="true"></span></button>
+						</div>
+						<ul class="v_menu">
+							<li><a href="{{ url_for('service.services', service='apache') }}" title="{{ lang.menu_links.hapservers.apache.title }}" class="head-submenu">{{ lang.menu_links.hapservers.link }}</a></li>
+							<li><a href="{{ url_for('config.config', service='apache') }}" title="{{ lang.menu_links.config.apache.title }}" class="head-submenu">{{ lang.menu_links.config.link }}</a></li>
+							<li><a href="{{ url_for('main.stats', service='apache') }}" title="{{ lang.menu_links.stats.apache.title }}" class="head-submenu">{{ lang.menu_links.stats.link }}</a></li>
+							<li><a href="{{ url_for('logs.logs', service='apache') }}" title="Apache {{ lang.menu_links.logs.title }}" class="head-submenu">{{ lang.menu_links.logs.link }}</a></li>
+							<li><a href="{{ url_for('metric.metrics', service='apache') }}" title="Apache {{ lang.menu_links.metrics.title }}" class="head-submenu">{{ lang.menu_links.metrics.link }}</a></li>
+							{% if g.user_params['role'] <= 3 %}
+							<li><a href="{{ url_for('config.versions', service='apache') }}" title="{{ lang.menu_links.versions.apache.title }}" class="head-submenu">{{ lang.menu_links.versions.link }}</a></li>
+							<li><a href="{{ url_for('service.ssl_service', service='apache') }}" title="{{ lang.menu_links.ssl.title }}" class="head-submenu" id="add3">{{ lang.menu_links.ssl.link }}</a></li>
+							{% endif %}
+						</ul>
+					</li>
+					{% endif %}
+
+					{% if '6' in g.user_params['user_services'] and g.user_params['role'] <= 2 %}
+					<li class="nav-item" data-nav-search="udp {{ lang.menu_links.udp.title|lower }}">
+						<a href="{{ url_for('udp.udp_listener', service='udp') }}" title="{{ lang.menu_links.udp.title }}" class="nav-link{% if request.url_rule.endpoint == 'udp.udp_listener' %} menu-active{% endif %}">
+							<span class="fas fa-random nav-icon" aria-hidden="true"></span><span class="nav-label">{{ lang.menu_links.udp.title }}</span>
+						</a>
+					</li>
+					{% endif %}
+
+					{% if '3' in g.user_params['user_services'] and g.user_params['role'] <= 2 %}
+					<li class="p_menu nav-service" data-nav-search="keepalived">
+						<div class="nav-service-row">
+							<a href="{{ url_for('service.services', service='keepalived') }}" title="{{ lang.menu_links.hapservers.keepalived.title }}" id="menu-keepalived" class="nav-link nav-service-link">
+								<img src="{{ url_for('static', filename='images/keepalived_icon.png') }}" class="menu-vendor-logo" alt=""><span class="nav-label">Keepalived</span>
+							</a>
+							<button type="button" class="nav-submenu-toggle" aria-expanded="false" aria-label="Keepalived {{ lang.menu_links.navigation.submenu }}"><span class="fas fa-chevron-right nav-chevron" aria-hidden="true"></span></button>
+						</div>
+						<ul class="v_menu">
+							<li><a href="{{ url_for('service.services', service='keepalived') }}" title="{{ lang.menu_links.hapservers.keepalived.title }}" class="head-submenu">{{ lang.menu_links.hapservers.link }}</a></li>
+							<li><a href="{{ url_for('config.config', service='keepalived') }}" title="{{ lang.menu_links.config.keepalived.title }}" class="head-submenu">{{ lang.menu_links.config.link }}</a></li>
+							<li><a href="{{ url_for('logs.logs', service='keepalived') }}" title="Keepalived {{ lang.menu_links.stats.title }}" class="head-submenu">{{ lang.menu_links.logs.link }}</a></li>
+							<li><a href="{{ url_for('config.versions', service='keepalived') }}" title="{{ lang.menu_links.versions.keepalived.title }}" class="head-submenu keepalived_versions">{{ lang.menu_links.versions.link }}</a></li>
+						</ul>
+					</li>
+					{% endif %}
+				</ul>
+			</li>
+
+			<li class="nav-group is-open" data-nav-group="monitoring">
+				<button type="button" class="nav-group-toggle" aria-expanded="true">
+					<span class="nav-group-label">{{ lang.words.monitoring|title() }}</span><span class="fas fa-chevron-down nav-chevron" aria-hidden="true"></span>
+				</button>
+				<ul class="nav-group-items">
+					<li class="p_menu nav-service" data-nav-search="{{ lang.menu_links.monitoring.link|lower }} smon checker">
+						<div class="nav-service-row">
+							<a href="{{ url_for('smon.smon_main_dashboard') }}" title="{{ lang.menu_links.monitoring.title }}" class="nav-link nav-service-link">
+								<span class="fas fa-chart-line nav-icon" aria-hidden="true"></span><span class="nav-label">{{ lang.menu_links.monitoring.link }}</span>
+							</a>
+							<button type="button" class="nav-submenu-toggle" aria-expanded="false" aria-label="{{ lang.menu_links.monitoring.link }} {{ lang.menu_links.navigation.submenu }}"><span class="fas fa-chevron-right nav-chevron" aria-hidden="true"></span></button>
+						</div>
+						<ul class="v_menu">
+							<li><a href="{{ url_for('smon.smon_main_dashboard') }}" title="{{ lang.menu_links.monitoring.smon.dashboard }}" class="head-submenu">{{ lang.menu_links.monitoring.smon.dashboard }}</a></li>
+							<li><a href="{{ url_for('smon.status_page') }}" title="{{ lang.menu_links.monitoring.smon.status_page }}" class="head-submenu">{{ lang.menu_links.monitoring.smon.status_page }}</a></li>
+							<li><a href="{{ url_for('smon.smon_history') }}" title="{{ lang.menu_links.monitoring.smon.history }}" class="head-submenu">{{ lang.menu_links.monitoring.smon.history }}</a></li>
+							{% if g.user_params['role'] <= 3 %}
+							<li><a href="{{ url_for('smon.agent') }}" title="{{ lang.menu_links.monitoring.smon.agent }}" class="head-submenu">{{ lang.menu_links.monitoring.smon.agent }}</a></li>
+							<li><a href="{{ url_for('channel.channels') }}" title="{{ lang.words.channels|title() }} {{ lang.words.for }} Checker {{ lang.words.and }} SMON" class="head-submenu">{{ lang.words.channels|title }}</a></li>
+							<li><a href="{{ url_for('checker.checker_settings') }}" title="Checker: {{ lang.words.settings }}" class="head-submenu">Checker: {{ lang.words.settings|title() }}</a></li>
+							{% endif %}
+							<li><a href="{{ url_for('checker.checker_history') }}" title="{{ lang.menu_links.monitoring.checker_history }}" class="head-submenu">{{ lang.menu_links.monitoring.checker_history }}</a></li>
+							<li><a href="{{ url_for('portscanner.portscanner') }}" title="{{ lang.menu_links.monitoring.port_scan }}" class="head-submenu">{{ lang.menu_links.monitoring.port_scan }}</a></li>
+							<li><a href="{{ url_for('main.nettools') }}" title="{{ lang.menu_links.monitoring.net_tools }}" class="head-submenu">{{ lang.menu_links.monitoring.net_tools }}</a></li>
+						</ul>
+					</li>
+				</ul>
+			</li>
+
+			{% if g.user_params['role'] <= 2 %}
+			<li class="nav-group is-open" data-nav-group="administration">
+				<button type="button" class="nav-group-toggle" aria-expanded="true">
+					<span class="nav-group-label">{{ lang.menu_links.navigation.administration }}</span><span class="fas fa-chevron-down nav-chevron" aria-hidden="true"></span>
+				</button>
+				<ul class="nav-group-items">
+					<li class="p_menu nav-service" data-nav-search="{{ lang.words.installation|lower }}">
+						<div class="nav-service-row">
+							<a href="{{ url_for('install.install_monitoring') }}" title="{{ lang.menu_links.servers.title }}" class="nav-link nav-service-link">
+								<span class="fas fa-download nav-icon" aria-hidden="true"></span><span class="nav-label">{{ lang.words.installation|title() }}</span>
+							</a>
+							<button type="button" class="nav-submenu-toggle" aria-expanded="false" aria-label="{{ lang.words.installation|title() }} {{ lang.menu_links.navigation.submenu }}"><span class="fas fa-chevron-right nav-chevron" aria-hidden="true"></span></button>
+						</div>
+						<ul class="v_menu">
+							<li><a href="{{ url_for('install.install_monitoring') }}#service" title="{{ lang.words.servers|title() }}: {{ lang.words.proxy|title() }} {{ lang.words.services }} {{ lang.words.installation }}" class="service installproxy head-submenu">{{ lang.words.proxy|title() }} {{ lang.words.services }}</a></li>
+							<li><a href="{{ url_for('install.install_monitoring') }}#monitoring" title="{{ lang.words.servers|title() }}: {{ lang.words.monitoring|title() }} {{ lang.words.services }} {{ lang.words.installation }}" class="monitoring installmon head-submenu">{{ lang.words.monitoring|title() }}</a></li>
+							<li><a href="{{ url_for('install.install_monitoring') }}#geolite2" title="{{ lang.words.installation|title() }} GeoLite2" class="geolite2 installgeo head-submenu">GeoLite2</a></li>
+						</ul>
+					</li>
+					<li class="p_menu nav-service" id="admin-area" data-nav-search="{{ lang.menu_links.admin_area.link|lower }}">
+						<div class="nav-service-row">
+							<a href="{{ url_for('admin.admin') }}#users" title="{{ lang.menu_links.admin_area.title }}" class="nav-link nav-service-link">
+								<span class="fas fa-cog nav-icon" aria-hidden="true"></span><span class="nav-label">{{ lang.menu_links.admin_area.link }}</span>
+							</a>
+							<button type="button" class="nav-submenu-toggle" aria-expanded="false" aria-label="{{ lang.menu_links.admin_area.link }} {{ lang.menu_links.navigation.submenu }}"><span class="fas fa-chevron-right nav-chevron" aria-hidden="true"></span></button>
+						</div>
+						<ul class="v_menu">
+							<li><a href="{{ url_for('admin.admin') }}#users" title="{{ lang.words.admin_area|title() }}: {{ lang.words.manage|title() }} {{ lang.words.users2 }}" class="users head-submenu" id="admin-area-users">{{ lang.words.users|title() }}</a></li>
+							<li><a href="{{ url_for('admin.admin') }}#servers" title="{{ lang.words.admin_area|title() }}: {{ lang.words.manage|title() }} {{ lang.words.servers2 }}" class="servers head-submenu" id="admin-area-servers">{{ lang.words.servers|title() }}</a></li>
+							<li><a href="{{ url_for('admin.admin') }}#ssh" title="{{ lang.words.admin_area|title() }}: {{ lang.words.manage|title() }} SSH {{ lang.words.creds2 }}" class="ssh head-submenu" id="admin-area-ssh">SSH {{ lang.words.creds|title() }}</a></li>
+							<li><a href="{{ url_for('admin.admin') }}#settings" title="{{ lang.words.admin_area|title() }}: {{ lang.words.manage|title() }} Roxy-WI {{ lang.words.settings2 }}" class="settings head-submenu" id="admin-area-settings">{{ lang.words.settings|title() }}</a></li>
+							<li><a href="{{ url_for('logs.logs_internal') }}" title="{{ lang.words.admin_area|title() }}: {{ lang.words.view|title() }} {{ lang.words.internal2 }} {{ lang.words.logs2 }}" class="head-submenu" id="admin-area-logs">{{ lang.words.internal|title() }} {{ lang.words.logs }}</a></li>
+							<li><a href="{{ url_for('admin.admin') }}#backup" title="{{ lang.words.servers|title() }}: {{ lang.words.backup|title() }} {{ lang.words.configs2 }}" class="backup head-submenu">{{ lang.words.backup|title() }}</a></li>
+							{% if g.user_params['role'] <= 1 %}
+							<li><a href="{{ url_for('admin.admin') }}#groups" title="{{ lang.words.admin_area|title() }}: {{ lang.words.manage|title() }} {{ lang.words.groups3 }}" class="groups head-submenu" id="admin-area-groups">{{ lang.words.groups|title() }}</a></li>
+							<li><a href="{{ url_for('admin.admin') }}#tools" title="{{ lang.words.admin_area|title() }}: {{ lang.words.manage|title() }} Roxy-WI {{ lang.words.tools }}" class="tools head-submenu" id="admin-area-services">{{ lang.words.tools|title() }}</a></li>
+							<li><a href="{{ url_for('admin.admin') }}#updatehapwi" title="{{ lang.words.admin_area|title() }}: {{ lang.words.w_update|title() }} Roxy-WI" class="updatehapwi head-submenu" id="admin-area-update">{{ lang.words.w_update|title() }}</a></li>
+							{% if oidc_available %}<li><a href="{{ url_for('admin.admin') }}#oidc" title="{{ lang.words.admin_area|title() }}: OIDC" class="oidc head-submenu" id="admin-area-oidc">OIDC</a></li>{% endif %}
+							{% endif %}
+						</ul>
+					</li>
+				</ul>
+			</li>
+			{% endif %}
+		</ul>
+		<div class="app-nav-empty" hidden>{{ lang.menu_links.navigation.no_results }}</div>
+	</nav>
+</aside>

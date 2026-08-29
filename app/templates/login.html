@@ -9,29 +9,44 @@
 .fontuser {
 	position: relative;
 }
-.fontuser i {
+.fontuser .form-login {
+	padding-left: 40px;
+}
+.login-leading-icon {
 	position: absolute;
-	left: 9px;
+	left: 13px;
 	top: 10px;
-	{#color: #036bb0;#}
 }
 .fontpassword {
 	position: relative;
 	margin-bottom: 15px;
 }
-.fontpassword i {
-	position: absolute;
-	left: 9px;
-	top: 10px;
+.fontpassword .form-login {
+	padding-left: 40px;
+	padding-right: 42px;
 }
-.fontpassword span i {
+.login-password-toggle,
+.login-password-toggle.ui-button {
 	position: absolute;
-	left: 193px;
-    top: 10px;
-    color: #036bb0;
-    font-size: 17px;
+	right: 7px;
+	top: 50%;
+	transform: translateY(-50%);
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	box-sizing: border-box;
+	width: 30px;
+	height: 30px;
+	min-width: 30px;
+	padding: 0 !important;
+	border: 0 !important;
+	background: transparent !important;
+	color: #036bb0 !important;
+	font-size: 17px;
 	cursor: pointer;
 }
+.login-password-toggle i { position: static; }
+.login-password-toggle [hidden] { display: none; }
 </style>
 <script>
 $( function() {
@@ -50,16 +65,21 @@ $( function() {
 			<form class="form-horizontal" id="auth" method="post">
 				<div class="fontuser">
 					{{ input('login', class='form-login', placeholder=lang.words.login|title(), required='required', autofocus='autofocus') }}
-					<i class="fa fa-user fa-lg"></i>
+					<i class="fa fa-user fa-lg login-leading-icon" aria-hidden="true"></i>
 				</div>
 				<br>
 				<div class="fontpassword">
 					{{ input('pass', type='password', class='form-login', placeholder=lang.words.password|title(), required='required') }}
 					{{ input('ref', type='hidden', value=ref) }}
-					<i class="fa fa-key fa-lg"></i>
-					<span onclick="showPassword('pass')" title="{{lang.words.show|title()}} {{lang.words.password}}">
-					<i class="far fa-eye"></i>
-						</span>
+					<i class="fa fa-key fa-lg login-leading-icon" aria-hidden="true"></i>
+					<button type="button" class="login-password-toggle" onclick="showPassword('pass', this)"
+						data-show-label="{{lang.words.show|title()}} {{lang.words.password}}"
+						data-hide-label="{{lang.words.hide|title()}} {{lang.words.password}}"
+						title="{{lang.words.show|title()}} {{lang.words.password}}"
+						aria-label="{{lang.words.show|title()}} {{lang.words.password}}" aria-pressed="false">
+						<i class="fas fa-eye login-password-show-icon" aria-hidden="true"></i>
+						<i class="fas fa-eye-slash login-password-hide-icon" aria-hidden="true" hidden></i>
+					</button>
 				</div>
 				<button type="submit" name="Login" value="Enter" id="enter">{{lang.words.login2|title()}}</button>
 			</form>

@@ -35,6 +35,9 @@ $(function () {
             beforeSend: function () { toastr.clear(); },
             success: function (response) {
                 dialog.dialog('close');
+				if (window.RoxywiConfigWorkflow) {
+					window.RoxywiConfigWorkflow.persisted();
+				}
                 toastr.success(i18n.created + ' #' + response.data.id);
             }
         });

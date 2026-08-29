@@ -104,10 +104,7 @@ $( function() {
 	});
 	$("#backup_tabs ul li").click(function() {
 		$('.menu li ul li').each(function () {
-			$(this).find('a').css('border-left', '0px solid var(--right-menu-blue-rolor)');
-			$(this).find('a').css('padding-left', '20px')
-			$(this).children(".backup").css('padding-left', '30px');
-			$(this).children(".backup").css('border-left', '4px solid var(--right-menu-blue-rolor)');
+			activeSubMenu($(this), 'backup');
 		});
 	});
 });

@@ -20,16 +20,16 @@
     }
 
     function iconAction(iconClass, title, handler) {
-        return $('<a>')
-            .addClass(iconClass)
-            .attr({title: title, role: 'button', tabindex: 0})
-            .on('click', handler)
-            .on('keydown', function (event) {
-                if (event.key === 'Enter' || event.key === ' ') {
-                    event.preventDefault();
-                    handler();
-                }
-            });
+		const icons = {
+			map: 'fa-sitemap',
+			edit: 'fa-edit',
+			delete: 'fa-trash-alt'
+		};
+		return $('<button type="button">')
+			.addClass('rw-icon-button oidc-icon-action')
+			.attr({'title': title, 'aria-label': title})
+			.append($('<i aria-hidden="true">').addClass('fas ' + icons[iconClass]))
+			.on('click', handler);
     }
 
     function refreshIcons(container) {
@@ -206,7 +206,8 @@
                 providers = data;
                 renderProviders();
             },
-            error: function (xhr) { toastr.error(responseError(xhr)); }
+			error: function (xhr) { RoxywiUI.error(responseError(xhr)); },
+			suppressGlobalError: true
         });
     }
 
@@ -337,16 +338,25 @@
             ).appendTo(row);
             $('<td>').append(
                 iconAction('delete', translations.delete_action, function () {
-                    if (!window.confirm(translate('delete_mapping_confirm', {group: mapping.external_group}))) return;
-                    $.ajax({
-                        url: '/admin/oidc/mappings/' + mapping.id,
-                        type: 'DELETE',
-                        success: function () {
-                            toastr.success(translations.mapping_deleted);
-                            loadMappings(selectedMappingProvider && selectedMappingProvider.id);
-                        },
-                        error: function (xhr) { toastr.error(responseError(xhr)); }
-                    });
+					const remove = function () {
+						$.ajax({
+							url: '/admin/oidc/mappings/' + mapping.id,
+							type: 'DELETE',
+							success: function () {
+								toastr.success(translations.mapping_deleted);
+								loadMappings(selectedMappingProvider && selectedMappingProvider.id);
+							},
+							error: function (xhr) { RoxywiUI.error(responseError(xhr), {action: translations.delete_action}); },
+							suppressGlobalError: true
+						});
+					};
+					if (window.RoxywiUI) {
+						RoxywiUI.confirm({
+							title: translations.delete_action,
+							message: translate('delete_mapping_confirm', {group: mapping.external_group}),
+							confirmText: translations.delete_action
+						}).then(function (confirmed) { if (confirmed) remove(); });
+					}
                 })
             ).appendTo(row);
             body.append(row);
@@ -374,9 +384,10 @@
             },
             error: function (xhr) {
                 if (selectedMappingProvider && selectedMappingProvider.id === providerId) {
-                    toastr.error(responseError(xhr));
+					RoxywiUI.error(responseError(xhr));
                 }
-            }
+			},
+			suppressGlobalError: true
         });
     }
 
@@ -479,7 +490,8 @@
                     providerDialog.dialog('close');
                     loadProviders();
                 },
-                error: function (xhr) { toastr.error(responseError(xhr)); }
+				error: function (xhr) { RoxywiUI.error(responseError(xhr), {action: translations.save}); },
+				suppressGlobalError: true
             });
         });
 
@@ -501,7 +513,8 @@
                     mappingDialog.dialog('close');
                     loadMappings(providerId);
                 },
-                error: function (xhr) { toastr.error(responseError(xhr)); }
+				error: function (xhr) { RoxywiUI.error(responseError(xhr), {action: translations.save}); },
+				suppressGlobalError: true
             });
         });
 

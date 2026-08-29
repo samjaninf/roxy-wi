@@ -4,7 +4,7 @@ import paramiko
 
 
 class SshConnection:
-    def __init__(self, server_ip: str, ssh_settings: dict):
+    def __init__(self, server_ip: str, ssh_settings: dict, connect_timeout: int = 11, banner_timeout: int = 200):
         self.ssh = paramiko.SSHClient()
         self.ssh.load_system_host_keys()
         self.ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
@@ -15,6 +15,8 @@ class SshConnection:
         self.ssh_enable = ssh_settings['enabled']
         self.ssh_key_name = ssh_settings['key']
         self.ssh_passphrase = ssh_settings['passphrase']
+        self.connect_timeout = connect_timeout
+        self.banner_timeout = banner_timeout
 
     # noinspection PyExceptClausesOrder
     def __enter__(self):
@@ -22,8 +24,8 @@ class SshConnection:
             'hostname': self.server_ip,
             'port': self.ssh_port,
             'username': self.ssh_user_name,
-            'timeout': 11,
-            'banner_timeout': 200,
+            'timeout': self.connect_timeout,
+            'banner_timeout': self.banner_timeout,
             'look_for_keys': False
         }
         if self.ssh_enable == 1:

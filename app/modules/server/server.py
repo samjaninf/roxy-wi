@@ -25,7 +25,12 @@ def ssh_command(server_ip: str, commands: str, **kwargs):
 	else:
 		timeout = 2
 	try:
-		with mod_ssh.ssh_connect(server_ip) as ssh:
+		connection_options = {}
+		if kwargs.get('connect_timeout') is not None:
+			connection_options['connect_timeout'] = kwargs['connect_timeout']
+		if kwargs.get('banner_timeout') is not None:
+			connection_options['banner_timeout'] = kwargs['banner_timeout']
+		with mod_ssh.ssh_connect(server_ip, **connection_options) as ssh:
 			if isinstance(commands, list):
 				command = commands[0]
 			else:

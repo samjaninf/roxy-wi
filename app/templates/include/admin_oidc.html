@@ -1,7 +1,7 @@
 <script id="oidc-translations" type="application/json">{{ lang.oidc_page|tojson }}</script>
 <script defer src="{{ url_for('static', filename='js/admin/oidc.js') }}"></script>
 <div class="oidc-admin">
-    <table class="overview" id="oidc-provider-table">
+    <table class="overview" id="oidc-provider-table" data-ux-table data-searchable="true" data-page-size="20">
         <thead>
             <tr class="overviewHead">
                 <th class="padding10 first-collumn">{{ lang.oidc_page.provider }}</th>
@@ -13,7 +13,7 @@
         </thead>
         <tbody id="oidc-provider-list"></tbody>
     </table>
-    <br><span class="add-button" id="oidc-new-provider" title="{{ lang.oidc_page.new_provider }}">+ {{ lang.oidc_page.add }}</span>
+	<br><button type="button" class="add-button" id="oidc-new-provider" title="{{ lang.oidc_page.new_provider }}">+ {{ lang.oidc_page.add }}</button>
     <br><br>
 
     <div class="add-note alert addName alert-info" style="width: inherit; margin-right: 15px;">
@@ -82,7 +82,7 @@
             </div>
         </div>
         <p>{{ lang.oidc_page.mapping_help }}</p>
-        <table class="overview oidc-table">
+        <table class="overview oidc-table" data-ux-table data-searchable="true" data-page-size="20">
             <thead>
                 <tr class="overviewHead">
                     <th class="padding10 first-collumn">{{ lang.oidc_page.external_group }}</th>

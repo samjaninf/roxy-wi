@@ -1,4 +1,5 @@
 import os
+import tempfile
 from pathlib import Path
 from typing import Optional, Union
 
@@ -24,6 +25,7 @@ import app.modules.service.nginx as service_nginx
 import app.modules.server.server as server_mod
 from app.views.service.views import ServiceConfigView, ServiceConfigVersionsView
 from app.modules.roxywi.class_models import DataStrResponse, DomainName
+from app.modules.common.common_classes import SupportClass
 
 bp.add_url_rule('/<service>/<server_id>', view_func=ServiceConfigView.as_view('config_view_ip'), methods=['POST'])
 bp.add_url_rule('/<service>/<server_id>/versions', view_func=ServiceConfigVersionsView.as_view('config_version'), methods=['DELETE'])
@@ -36,6 +38,71 @@ bp.add_url_rule('/<service>/<server_id>/versions', view_func=ServiceConfigVersio
 def before_request():
     """ Protect all the admin endpoints. """
     roxywi_common.require_request_server_access()
+
+
+@bp.post('/<service>/<server_id>/validate')
+@check_services
+def validate_candidate(service, server_id):
+    """Validate editor contents without changing the active configuration.
+    ---
+    tags:
+      - Service config
+    parameters:
+      - in: path
+        name: service
+        required: true
+        type: string
+      - in: path
+        name: server_id
+        required: true
+        type: string
+      - in: body
+        name: body
+        required: true
+        schema:
+          type: object
+          required: [config]
+          properties:
+            config:
+              type: string
+            file_path:
+              type: string
+    responses:
+      200:
+        description: Candidate is valid
+      400:
+        description: Candidate is invalid or malformed
+    """
+    body = request.get_json(silent=True) or {}
+    candidate = body.get('config')
+    file_path = body.get('file_path')
+    if not isinstance(candidate, str):
+        return jsonify({'status': 'failed', 'error': 'config must be a string'}), 400
+    if len(candidate.encode('utf-8')) > 10 * 1024 * 1024:
+        return jsonify({'status': 'failed', 'error': 'config is too large'}), 413
+
+    try:
+        server_ip = SupportClass(False).return_server_ip_or_id(server_id)
+    except Exception as exc:
+        return roxywi_common.handler_exceptions_for_json_data(exc, 'Cannot find the server')
+
+    suffix = f'.{config_common.get_file_format(service)}'
+    candidate_path = None
+    try:
+        with tempfile.NamedTemporaryFile(
+            mode='w', encoding='utf-8', prefix='roxywi-validate-', suffix=suffix, delete=False
+        ) as candidate_file:
+            candidate_file.write(candidate)
+            candidate_path = candidate_file.name
+        result = config_mod.validate_candidate_config(
+            server_ip, candidate_path, service, config_file_name=file_path
+        )
+        return jsonify({'status': 'success', 'data': result})
+    except Exception as exc:
+        return roxywi_common.handler_exceptions_for_json_data(exc, f'Cannot validate {service} configuration')
+    finally:
+        if candidate_path:
+            Path(candidate_path).unlink(missing_ok=True)
 
 
 @bp.route('/<service>/show', methods=['POST'])
@@ -62,12 +129,13 @@ def show_config_files(service):
     server_ip = request.form.get('serv')
     server_ip = common.is_ip_or_dns(server_ip)
     config_file_name = request.form.get('config_file_name')
+    edit_mode = request.form.get('edit_mode') == '1'
 
     if config_file_name and '..' in config_file_name:
         return jsonify({'error': 'error: .. is not allowed'})
 
     try:
-        return config_mod.show_config_files(server_ip, service, config_file_name)
+        return config_mod.show_config_files(server_ip, service, config_file_name, edit_mode=edit_mode)
     except Exception as e:
         return f'error: {e}'
 
@@ -108,6 +176,11 @@ def config(service, serv, edit, config_file_name, new):
     is_restart = ''
     is_serv_protected = ''
     new_config = new
+    remote_config_path = ''
+    if config_file_name and config_file_name != 'undefined':
+        remote_config_path = config_file_name.replace('92', '/')
+    elif service in ('haproxy', 'nginx', 'apache', 'keepalived'):
+        remote_config_path = str(sql.get_setting(f'{service}_config_path') or '')
 
     if serv and edit and new_config is None:
         roxywi_common.check_is_server_in_group(serv)
@@ -149,6 +222,7 @@ def config(service, serv, edit, config_file_name, new):
         'service': service,
         'is_restart': is_restart,
         'config_file_name': config_file_name,
+        'remote_config_path': remote_config_path,
         'is_serv_protected': is_serv_protected,
         'service_desc': service_sql.select_service(service),
         'user_subscription': roxywi_common.return_user_subscription(),

@@ -98,7 +98,9 @@ class ServiceView(MethodView):
             sock_port = int(sql.get_setting('haproxy_sock_port'))
             cmd = f'echo "show info" |nc {server.ip} {sock_port} -w 1'
             try:
-                output = server_mod.ssh_command(server.ip, cmd, timeout=5)
+                output = server_mod.ssh_command(
+                    server.ip, cmd, timeout=5, connect_timeout=10, banner_timeout=10
+                )
                 data = self.return_dict_from_out(output.splitlines())
             except Exception as e:
                 data = ErrorResponse(
@@ -123,7 +125,7 @@ class ServiceView(MethodView):
                 cmd = (f"sudo docker exec -it {container_name} /usr/sbin/nginx -v 2>&1|awk '{{print $3}}' && "
                        f"docker ps -a -f name={container_name} --format '{{{{.Status}}}}' && ps ax |grep nginx:|grep -v grep |wc -l")
                 try:
-                    out = server_mod.ssh_command(server.ip, cmd)
+                    out = server_mod.ssh_command(server.ip, cmd, connect_timeout=10, banner_timeout=10)
                 except Exception as e:
                     return ErrorResponse(error=str(e)).model_dump(mode='json'), 500
                 out = out.replace('\n', '')
@@ -143,7 +145,7 @@ class ServiceView(MethodView):
                 cmd = ("/usr/sbin/nginx -v 2>&1|awk '{print $3}' && systemctl status nginx |grep -e 'Active'"
                        "|awk '{print $2, $9$10$11$12$13}' && ps ax |grep nginx:|grep -v grep |wc -l")
                 try:
-                    out = server_mod.ssh_command(server.ip, cmd)
+                    out = server_mod.ssh_command(server.ip, cmd, connect_timeout=10, banner_timeout=10)
                 except Exception as e:
                     return ErrorResponse(error=str(e)).model_dump(mode='json'), 500
                 out = out.replace('\n', '')
@@ -221,7 +223,7 @@ class ServiceView(MethodView):
             cmd = ("sudo /usr/sbin/keepalived -v 2>&1|head -1|awk '{print $2}' && sudo systemctl status keepalived |grep -e 'Active'"
                    "|awk '{print $2, $9$10$11$12$13}' && ps ax |grep 'keepalived '|grep -v udp|grep -v grep |wc -l")
             try:
-                out = server_mod.ssh_command(server.ip, cmd)
+                out = server_mod.ssh_command(server.ip, cmd, connect_timeout=10, banner_timeout=10)
                 out1 = out.split()
                 if out1[0].split('\r')[0] == '/usr/sbin/keepalived:':
                     return ErrorResponse(error='Keepalived service not found').model_dump(mode='json'), 404

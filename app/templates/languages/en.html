@@ -123,9 +123,50 @@
     },
     "udp": {
         "title": "UDP listeners"
+    },
+    "navigation": {
+        "label": "Main navigation",
+        "search": "Search pages",
+        "operations": "Operations",
+        "administration": "Administration",
+        "collapse": "Collapse navigation",
+        "expand": "Expand navigation",
+        "submenu": "submenu",
+        "no_results": "No matching pages"
     }
 }
 %}
+{% set ux = {
+    "search": "Search",
+    "all": "All",
+    "stopped": "Stopped",
+    "unavailable": "Unavailable",
+    "stale": "Status is stale",
+    "actions": "Actions",
+    "last_checked": "Last checked",
+    "status_updated": "Statuses updated",
+    "result": "Result",
+    "choose_tool": "Choose a tool and run it",
+    "unsaved_changes": "Unsaved changes",
+    "saved": "Saved",
+    "no_unsaved_changes": "No unsaved changes",
+    "draft_available": "A newer local draft is available",
+    "restore": "Restore draft",
+    "discard": "Discard draft",
+    "review_changes": "Review changes",
+    "affected_servers": "Affected servers",
+    "validation": "Validation result",
+    "no_changes": "No changes",
+    "leave_warning": "You have unsaved configuration changes.",
+    "direct_apply_warning": "Review the diff before applying this configuration directly.",
+    "operation_failed": "Operation failed",
+    "raw_output": "Raw output",
+        "reason": "Reason",
+        "what_failed": "What failed",
+        "next_action": "What to do next",
+        "retry_action": "Retry",
+        "open_logs": "Open logs"
+} %}
 {% set change_center = {
     "intro": "Validate, approve, deploy and roll back configuration changes from one place.",
     "premium_required": "Change Center is available only with an active Premium plan.",

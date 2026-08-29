@@ -219,7 +219,7 @@ def get_overview_last_edit(server_ip: str, service: str) -> str:
 	config_path = sql.get_setting(f'{service}_config_path')
 	command = "ls -l %s |awk '{ print $6\" \"$7\" \"$8}'" % config_path
 	try:
-		return server_mod.ssh_command(server_ip, command)
+		return server_mod.ssh_command(server_ip, command, connect_timeout=10, banner_timeout=10)
 	except Exception as e:
 		return f'error: Cannot get last date {e} for server {server_ip}'
 

@@ -25,8 +25,8 @@
 <script src="/static/js/codemirror/mode/haproxy.js"></script>
 <script src="/static/js/codemirror/keymap/sublime.js"></script>
 <link rel="stylesheet" href="/static/js/diff2html/diff2html.min.css">
-<script src="/static/js/diff2html/diff2html.min.js"></script>
-<script src="/static/js/diff2html/diff2html-ui.min.js"></script>
+<script src="{{ url_for('static', filename='js/diff2html/diff2html.min.js', v='41c3aca') }}"></script>
+<script src="{{ url_for('static', filename='js/diff2html/diff2html-ui.min.js', v='7a22ebb') }}"></script>
 <script src="/static/js/configshow.js"></script>
 <script src="/static/js/add.js"></script>
 <script src="/static/js/add_nginx.js"></script>
@@ -73,29 +73,59 @@
 
 	{% if config %}
 		{% if g.user_params['role'] <= 3 %}
-			<h4 class="left-space">{{lang.words.config|title()}} {% if config_file_name and config_file_name != 'undefined' %}{{config_file_name.replace('92', '/')}}{%endif%} {{lang.words.from}} {{ serv }}</h4>
-			<form action="/config/{{service}}/{{serv}}" name="saveconfig" id="saveconfig" method="post" class="left-space">
+			{% set editor_path = remote_config_path|default('', true) %}
+			{% set editor_name = editor_path.split('/')[-1] if editor_path else service_desc.service ~ ' config' %}
+			<form action="/config/{{service}}/{{serv}}" name="saveconfig" id="saveconfig" method="post" class="left-space config-editor-form">
 				<input type="hidden" value="{{ cfg }}.old" name="config_local_path">
 				<input type="hidden" value="{{ service }}" name="service">
 				<input type="hidden" value="{{ config_file_name }}" name="file_path">
-				<div>
-					<textarea name="config" id="config_text_area" class="config" rows="35" cols="100">{{ config }}</textarea>
+				<div id="config-draft-banner" class="rw-operation-result config-draft-banner" hidden>
+					<span>{{lang.ux.draft_available}}</span>
+					<button type="button" id="config-restore-draft" class="rw-button rw-button-primary">{{lang.ux.restore}}</button>
+					<button type="button" id="config-discard-draft" class="rw-button rw-button-secondary">{{lang.ux.discard}}</button>
 				</div>
-				<p>
-					<a href="/config/{{service}}/{{serv}}/show" class="ui-button ui-widget ui-corner-all" title="{{lang.phrases.return_to_config}}">{{lang.words.back|title()}}</a>
-					<button type="submit" value="test" name="save" class="btn btn-default" title="{{lang.words.check|title()}} {{lang.words.config}} {{lang.words.without}} {{lang.words.saving}}">{{lang.phrases.check_config}}</button>
-					<button type="submit" value="save" name="save" class="btn btn-default" title="{{lang.phrases.save_title}}">{{lang.words.save|title()}}</button>
+				<section class="config-editor-card" aria-labelledby="config-editor-file-name">
+					<header class="config-editor-card-header">
+						<div class="config-editor-file">
+							<strong id="config-editor-file-name" class="config-editor-file-name">{{editor_name}}</strong>
+							<span class="config-editor-file-path">{{editor_path}}</span>
+						</div>
+						<div id="config-editor-state" class="config-editor-state is-saved" aria-live="polite">
+							<span id="config-dirty-icon" class="config-dirty-icon" aria-hidden="true">✓</span>
+							<span id="config-dirty-state">{{lang.ux.no_unsaved_changes}}</span>
+						</div>
+					</header>
+					<div class="config-editor-shell">
+						<textarea name="config" id="config_text_area" class="config" rows="35" cols="100">{{ config }}</textarea>
+					</div>
+				</section>
+				<div id="config-validation-result" class="rw-operation-result config-validation-result" aria-live="polite" hidden><b>{{lang.ux.validation}}</b></div>
+				<div class="config-editor-actions">
+					<a href="/config/{{service}}/{{serv}}/show" class="rw-button rw-button-secondary" title="{{lang.phrases.return_to_config}}">{{lang.words.back|title()}}</a>
+					<button type="submit" value="test" name="action" class="rw-button rw-button-secondary" title="{{lang.words.check|title()}} {{lang.words.config}} {{lang.words.without}} {{lang.words.saving}}">{{lang.phrases.check_config}}</button>
+					<button type="submit" value="save" name="action" class="rw-button rw-button-secondary" title="{{lang.phrases.save_title}}">{{lang.words.save|title()}}</button>
 					{% if is_restart|int == 0 %}
-					<button type="submit" value="restart" name="" class="btn btn-default">{{lang.phrases.save_and_restart}}</button>
+					<button type="submit" value="restart" name="action" class="rw-button rw-button-secondary">{{lang.phrases.save_and_restart}}</button>
 					{% endif %}
-					<button type="submit" value="reload" name="save" class="btn btn-default">{{lang.phrases.save_and_reload}}</button>
-					<button type="button" id="open-change-dialog" class="btn btn-default">{{lang.change_center.create}}</button>
+					<button type="submit" value="reload" name="action" class="rw-button rw-button-secondary">{{lang.phrases.save_and_reload}}</button>
+					<button type="button" id="open-change-dialog" class="rw-button rw-button-primary"><span class="fas fa-file-signature" aria-hidden="true"></span> {{lang.change_center.create}}</button>
+				</div>
 					{% if service != 'keepalived' %}
 					<div class="alert alert-info" style="margin-left: -0px;"><b>{{lang.words.note|title()}}:</b> {{lang.phrases.master_slave}}</div>
                     <div class="alert alert-info" style="margin-left: -0px;">Read more about <a href="https://roxy-wi.org/description/hotkeys" target="_blank">Hotkeys</a></div>
 					{% endif %}
-				</p>
 			</form>
+			<div id="config-review-dialog" title="{{lang.ux.review_changes}}" style="display: none;">
+				<p>{{lang.ux.direct_apply_warning}}</p>
+				<p><b>{{lang.ux.affected_servers}}:</b> {{serv}}</p>
+				<div id="config-review-diff"></div>
+			</div>
+			<div id="config-workflow-i18n" hidden
+				 data-unsaved="{{lang.ux.unsaved_changes}}" data-saved="{{lang.ux.no_unsaved_changes}}"
+				 data-no-changes="{{lang.ux.no_changes}}" data-review="{{lang.ux.review_changes}}"
+				 data-validation="{{lang.ux.validation}}"
+				 data-apply="{{lang.words.apply|title()}}" data-cancel="{{lang.words.cancel|title()}}"
+				 data-leave-warning="{{lang.ux.leave_warning}}"></div>
 			<div id="change-create-dialog" title="{{lang.change_center.create}}" style="display: none;">
 				<p>{{lang.change_center.created_from_editor}}</p>
 				<p>
@@ -130,10 +160,14 @@
 					 data-cancel="{{lang.words.cancel|title()}}"></div>
 			</div>
 			<script src="{{ url_for('static', filename='js/change-editor.js') }}"></script>
+			<script src="{{ url_for('static', filename='js/config-workflow.js') }}"></script>
 		{% endif %}
 	{% endif %}
 <script>
 	var cur_url = window.location.href.split('/');
+	if (cur_url[4] === 'map') {
+		showMap();
+	}
 	if (cur_url[4] === 'compare') {
 		showCompareConfigs();
 	}
@@ -157,50 +191,52 @@
 	if (cur_url[4] === 'config_file_name') {
 		showConfigFilesForEditing();
 	}
-	if (cur_url[4] === 'haproxy' && cur_url[6] === 'edit') {
-		var myCodeMirror = CodeMirror.fromTextArea(document.getElementById("config_text_area"),
-            {
-                mode: "haproxy",
-                lineNumbers: true,
-                lineWrapping: true,
-                autocapitalize: true,
-                autocorrect: true,
-                spellcheck: true,
-                autoCloseBrackets: true,
-                keyMap: "sublime",
-                matchBrackets: true,
-                foldGutter: true,
-                showCursorWhenSelecting: true,
-                gutters: ["CodeMirror-linenumbers", "CodeMirror-foldgutter", "breakpoints"],
-                highlightSelectionMatches: {showToken: /\w/, annotateScrollbar: true}
-            });
-	} else if (cur_url[6] === 'edit') {
-		var myCodeMirror = CodeMirror.fromTextArea(document.getElementById("config_text_area"),
-				{
-					mode: "nginx",
-					lineNumbers: true,
-					lineWrapping: true,
-					autocapitalize: true,
-					autocorrect: true,
-					spellcheck: true,
-					autoCloseBrackets: true,
-					keyMap: "sublime",
-					matchBrackets: true,
-					foldGutter: true,
-					showCursorWhenSelecting: true,
-    				gutters: ["CodeMirror-linenumbers", "CodeMirror-foldgutter", "breakpoints"],
-					highlightSelectionMatches: {showToken: /\w/, annotateScrollbar: true}
-				});
-	}
-    if (cur_url[6] === 'edit') {
+	var myCodeMirror;
+	if (cur_url[6] === 'edit' && document.getElementById('config_text_area')) {
+		$.ajax({
+			url: '/config/' + $('#service').val() + '/show-files',
+			type: 'POST',
+			data: {
+				serv: $('#serv').val(),
+				config_file_name: {{ config_file_name|tojson }},
+				edit_mode: '1'
+			},
+			success: function (data) {
+				if (typeof data === 'string' && data.indexOf('error:') !== -1) {
+					toastr.error(data);
+					return;
+				}
+				$('#ajax-config_file_name').html(data);
+			},
+			error: function (xhr) {
+				toastr.error(xhr.responseText || 'Cannot load configuration files');
+			}
+		});
+		const editorModes = {
+			haproxy: 'haproxy',
+			nginx: 'nginx',
+			apache: null,
+			keepalived: null
+		};
+		myCodeMirror = CodeMirror.fromTextArea(document.getElementById('config_text_area'), {
+			mode: editorModes[{{ service|tojson }}] || null,
+			lineNumbers: true,
+			lineWrapping: true,
+			autocapitalize: false,
+			autocorrect: false,
+			spellcheck: false,
+			autoCloseBrackets: true,
+			keyMap: 'sublime',
+			matchBrackets: true,
+			foldGutter: true,
+			showCursorWhenSelecting: true,
+			gutters: ['CodeMirror-linenumbers', 'CodeMirror-foldgutter', 'breakpoints'],
+			highlightSelectionMatches: {showToken: /\w/, annotateScrollbar: true}
+		});
+
         myCodeMirror.on("gutterClick", function (cm, n) {
             let info = cm.lineInfo(n);
             cm.setGutterMarker(n, "breakpoints", info.gutterMarkers ? null : makeMarker());
-        });
-        myCodeMirror.on("beforeChange", function (cm, change) {
-            $(window).bind('beforeunload', function () {
-                return 'Are you sure you want to leave?';
-            });
         });
     }
 	function makeMarker() {
@@ -210,14 +246,8 @@
 		return marker;
 	}
 </script>
-<style>
-.CodeMirror {
-  	line-height: 1.2em;
-  	height: 70%;
-}
-</style>
 <script>
-    if (cur_url[6] === 'edit') {
+    if (myCodeMirror) {
         myCodeMirror.refresh();
     }
 	$(document).bind('keydown', 'ctrl+s', function (){
@@ -243,7 +273,7 @@ function explainSelected(mode) {
     const to = myCodeMirror.getCursor("to");
 
     if (!selectedText.trim()) {
-        alert("{{ lang.phrases.select_part }}");
+		toastr.warning("{{ lang.phrases.select_part }}");
         return;
     }
 
@@ -283,20 +313,22 @@ function explainSelected(mode) {
                 }
 
                 NProgress.done();
-                return alert(`Ошибка API (${response.status}):\n\n${message}`);
+				RoxywiUI.error(message, {action: `API (${response.status})`});
+				return;
             }
             let data;
             try {
                 data = JSON.parse(text);
             } catch (e) {
                 NProgress.done();
-                alert("{{ lang.phrases.error_parsing }}");
+				RoxywiUI.error("{{ lang.phrases.error_parsing }}", {action: 'AI'});
                 return;
             }
             let result = typeof data.response === "string" ? data.response.trim() : "";
             if (!result) {
                 NProgress.done();
-                return alert("{{ lang.phrases.empty_ans }}");
+				RoxywiUI.error("{{ lang.phrases.empty_ans }}", {action: 'AI'});
+				return;
             }
 
             result = result.replace(/^```(?:[a-zA-Z]+)?\s*/gm, "");
@@ -311,7 +343,7 @@ function explainSelected(mode) {
         }))
         .catch(err => {
             NProgress.done();
-            alert("Error: " + err.message);
+			RoxywiUI.error(err, {action: 'AI'});
             console.error(err);
         });
 }
@@ -404,7 +436,7 @@ function doClipboardAction(action) {
     }
     hideCustomMenu();
   }).catch(err => {
-    alert("Clipboard error: " + err.message);
+	RoxywiUI.error(err, {action: 'Clipboard'});
     console.error(err);
   });
 }

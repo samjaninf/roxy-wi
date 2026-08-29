@@ -123,9 +123,50 @@
     },
     "udp": {
         "title": "UDP 监听器"
+    },
+    "navigation": {
+        "label": "主导航",
+        "search": "搜索页面",
+        "operations": "操作",
+        "administration": "管理",
+        "collapse": "收起导航",
+        "expand": "展开导航",
+        "submenu": "子菜单",
+        "no_results": "没有匹配的页面"
     }
 }
 %}
+{% set ux = {
+    "search": "搜索",
+    "all": "全部",
+    "stopped": "已停止",
+    "unavailable": "不可用",
+    "stale": "状态已过期",
+    "actions": "操作",
+    "last_checked": "上次检查",
+    "status_updated": "状态更新时间",
+    "result": "结果",
+    "choose_tool": "选择并运行工具",
+    "unsaved_changes": "有未保存的更改",
+    "saved": "已保存",
+    "no_unsaved_changes": "没有未保存的更改",
+    "draft_available": "有更新的本地草稿",
+    "restore": "恢复草稿",
+    "discard": "丢弃草稿",
+    "review_changes": "查看更改",
+    "affected_servers": "受影响的服务器",
+    "validation": "验证结果",
+    "no_changes": "没有更改",
+    "leave_warning": "配置包含未保存的更改。",
+    "direct_apply_warning": "直接应用此配置前请检查差异。",
+    "operation_failed": "操作失败",
+    "raw_output": "完整输出",
+        "reason": "原因",
+        "what_failed": "失败的操作",
+        "next_action": "下一步",
+        "retry_action": "重试",
+        "open_logs": "打开日志"
+} %}
 {% set change_center = {
     "intro": "在一个位置验证、审批、部署和回滚配置变更。",
     "premium_required": "Change Center 仅适用于有效的 Premium 套餐。",

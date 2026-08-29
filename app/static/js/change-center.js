@@ -7,6 +7,7 @@ $(function () {
     let changesById = {};
     let actionPoll = null;
     let openDetailsId = null;
+    let iconRefreshScheduled = false;
 
     function textCell(value) {
         return $('<td>').text(value == null ? '' : value);
@@ -23,8 +24,22 @@ $(function () {
             .addClass('change-action-' + action)
             .attr('title', title)
             .attr('aria-label', title)
-            .append($('<span>').addClass('fas ' + icon))
+            .append($('<span aria-hidden="true">').addClass('fas ' + icon))
             .on('click', function () { runAction(changeId, action); });
+    }
+
+    function refreshActionIcons() {
+        if (window.FontAwesome && window.FontAwesome.dom && window.FontAwesome.dom.i2svg) {
+            window.FontAwesome.dom.i2svg({node: tableBody.get(0)});
+			return;
+        }
+		if (!iconRefreshScheduled) {
+			iconRefreshScheduled = true;
+			window.addEventListener('load', function () {
+				iconRefreshScheduled = false;
+				refreshActionIcons();
+			}, {once: true});
+		}
     }
 
     function renderActions(change) {
@@ -67,6 +82,7 @@ $(function () {
             row.append(renderActions(change));
             tableBody.append(row);
         });
+        refreshActionIcons();
         if (openDetailsId && changesById[openDetailsId] && $('#change-details-dialog').dialog('isOpen')) {
             renderDetailsContent(changesById[openDetailsId]);
         }

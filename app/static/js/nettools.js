@@ -1,9 +1,25 @@
 $( function() {
+	function showNettoolsError(data, action) {
+		if (window.RoxywiUI) {
+			RoxywiUI.error(data, {action: action});
+		} else {
+			toastr.error(data && data.error ? data.error : data);
+		}
+	}
+	function resetResult() {
+		$('#ajax-nettools').empty().removeClass('rw-empty-state rw-error-state');
+		$('.nettools-result').attr('aria-busy', 'true');
+	}
+	function renderResult(content, allowMarkup) {
+		const result = $('#ajax-nettools').html('<div class="ping_pre"></div>').find('.ping_pre');
+		if (allowMarkup) result.html(content); else result.text(content);
+		$('.nettools-result').attr('aria-busy', 'false');
+	}
     $("#nettools_nslookup_record_type").selectmenu({
         width: 175
     });
     $("#nettools_telnet_form").on("click", ":submit", function (e) {
-        $('#ajax-nettools').html('');
+        resetResult();
         let frm = $('#nettools_telnet_form');
         if ($('#nettools_telnet_server_from option:selected').val() === '------') {
             toastr.warning('Choose a server From');
@@ -24,26 +40,26 @@ $( function() {
             contentType: "application/json; charset=utf-8",
             success: function (data) {
                 if (data.status === 'failed') {
-                    toastr.error(data);
+                    showNettoolsError(data, 'TCP check');
                 } else if (data.indexOf('error: ') != '-1' || data.indexOf('Fatal') != '-1' || data.indexOf('Error(s)') != '-1') {
-                    $('#ajax-nettools').html('<div class="ping_pre">' + data + '</div>');
+                    renderResult(data, true);
                 } else if (data.indexOf('warning: ') != '-1') {
                     toastr.clear();
                     toastr.warning(data)
                 } else {
                     toastr.clear();
                     if (data.indexOf('') != '-1') {
-                        $('#ajax-nettools').html('<div class="ping_pre"><b>Connection has been successful</b></div>');
+                        renderResult('<b>Connection has been successful</b>', true);
                     } else {
-                        $('#ajax-nettools').html('<div class="ping_pre"><b>Connection has been successful</b>:<br /><br />' + data + '</div>');
+                        renderResult('<b>Connection has been successful</b>:<br><br>' + data, true);
                     }
                 }
             }
         });
-        event.preventDefault();
+        e.preventDefault();
     });
     $("#nettools_nslookup_form").on("click", ":submit", function (e) {
-        $('#ajax-nettools').html('');
+        resetResult();
         var frm = $('#nettools_nslookup_form');
         if ($('#nettools_nslookup_server_from option:selected').val() == '------') {
             toastr.warning('Choose a server From');
@@ -60,17 +76,17 @@ $( function() {
             contentType: "application/json; charset=utf-8",
             success: function (data) {
                 if (data.status === 'failed') {
-                    toastr.warning(data);
+                    showNettoolsError(data, 'DNS lookup');
                 } else {
                     toastr.clear();
-                    $('#ajax-nettools').html('<div class="ping_pre">' + data + '</div>');
+                    renderResult(data, true);
                 }
             }
         });
-        event.preventDefault();
+        e.preventDefault();
     });
     $("#nettools_icmp_form").on("click", ":submit", function (e) {
-        $('#ajax-nettools').html('');
+        resetResult();
         let frm = $('#nettools_icmp_form');
         if ($('#nettools_icmp_server_from option:selected').val() === '------') {
             toastr.warning('Choose a server From');
@@ -94,23 +110,22 @@ $( function() {
                         data = JSON.parse(e.currentTarget.responseText);
                         toastr.warning(data.error);
                     } catch (error) {
-                        $('#ajax-nettools').html(e.currentTarget.responseText);
+                        renderResult(e.currentTarget.responseText, true);
                     }
                 }
             },
             dataType: 'text',
             success: function (data) {
                 if (data.status === 'failed') {
-                    toastr.error(data);
+                    showNettoolsError(data, 'ICMP');
                 }
             }
         });
-        event.preventDefault();
+        e.preventDefault();
     });
     $("#nettools_portscanner_form").on("click", ":submit", function (e) {
-        $('#ajax-nettools').html('');
+        resetResult();
         let port_server = $('#nettools_portscanner_server').val();
-        $('#ajax-nettools').html('');
         if (port_server === '') {
             toastr.warning('Enter an address');
             return false;
@@ -122,7 +137,7 @@ $( function() {
             contentType: "application/json; charset=utf-8",
             success: function (data) {
                 if (data.status === 'failed') {
-                    toastr.error(data.error);
+                    showNettoolsError(data, 'Port scan');
                 } else {
                     toastr.clear();
                     $("#show_scans_ports_body").html(data.data);
@@ -143,10 +158,10 @@ $( function() {
                 }
             }
         });
-        event.preventDefault();
+        e.preventDefault();
     });
     $("#nettools_whois_form").on("click", ":submit", function (e) {
-        $('#ajax-nettools').html('');
+        resetResult();
         var frm = $('#nettools_whois_form');
         if ($('#nettools_whois_name').val() === '') {
             toastr.warning('Enter a Domain name');
@@ -159,17 +174,17 @@ $( function() {
             contentType: "application/json; charset=utf-8",
             success: function (data) {
                 if (data.status === 'failed') {
-                    toastr.error(data);
+                    showNettoolsError(data, 'Whois');
                 } else {
                     toastr.clear();
-                    $('#ajax-nettools').html('<div class="ping_pre">' + data + '</div>');
+                    renderResult(data, true);
                 }
             }
         });
-        event.preventDefault();
+        e.preventDefault();
     });
     $("#nettools_ipcalc_form").on("click", ":submit", function (e) {
-        $('#ajax-nettools').html('');
+        resetResult();
         let frm = $('#nettools_ipcalc_form');
         let ip = $('#nettools_address').val();
         let netmask = $('#nettools_netmask').val();
@@ -189,23 +204,23 @@ $( function() {
             success: function (data) {
                 if (data.status === 'failed') {
                     toastr.clear();
-                    toastr.error(data.error);
+                    showNettoolsError(data, 'IP calculator');
                 } else {
                     toastr.clear();
-                    $('#ajax-nettools').html(
-                        '<div class="ping_pre"><b>Address</b>: ' + data.address + '<br />' +
+                    renderResult(
+                        '<b>Address</b>: ' + data.address + '<br />' +
                         '<b>Netmask</b>: ' + data.netmask + '<br />' +
                         '<b>Network</b>: ' + data.network + '<br />' +
                         '<b>Broadcast</b>: ' + data.broadcast + '<br />' +
                         '<b>Host min</b>: ' + data.min + '<br />' +
                         '<b>Host max</b>: ' + data.max + '<br />' +
-                        '<b>Hosts</b>: ' + data.hosts +
-                        '</div>'
-                    );
+                        '<b>Hosts</b>: ' + data.hosts,
+						true
+					);
                 }
             }
         });
-        event.preventDefault();
+        e.preventDefault();
     });
 });
 function getFormData($form){

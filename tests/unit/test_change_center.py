@@ -1516,6 +1516,15 @@ def test_change_center_uses_application_confirmation_dialog():
     for action in ('deploy', 'rollback', 'cancel', 'recover'):
         assert f'change-confirm-{action}' in stylesheet
         assert f'change-action-{action}' in stylesheet
+    assert template.index('id="change-center-table"') < template.index('class="alert alert-info change-center-intro"')
+
+
+def test_change_center_refreshes_icons_added_after_fontawesome_initialization():
+    script = Path('app/static/js/change-center.js').read_text(encoding='utf-8')
+
+    assert 'function refreshActionIcons()' in script
+    assert 'window.FontAwesome.dom.i2svg({node: tableBody.get(0)})' in script
+    assert 'refreshActionIcons();' in script
 
 
 def test_change_details_show_live_per_node_rollout_progress():

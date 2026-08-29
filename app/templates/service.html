@@ -24,26 +24,29 @@
 		hostnamea.push(host)
 		var ip_for_check = "{{s.2}}";
 		ip_for_check = ip_for_check.replace(/\./g, '\\.');
-		setInterval(check_service_status, 11000, {{s.0}}, '{{s.2}}', '{{service}}');
 	{% endfor %}
 	$( function() {
-		$( ".sortable" ).sortable({
-			revert: true,
-			placeholder: "ui-state-highlight"
-		});
-		$( ".sortable" ).disableSelection();
-
-		$( ".sortable" ).sortable({
-			handle: ".portlet-header",
-			stop: function(event, ui) {
-				var itemOrder = $('.sortable').sortable("toArray");
+		const serviceGrid = $("#up-pannel.service-card-grid");
+		if (serviceGrid.find(".service-drag-handle").length) {
+			serviceGrid.sortable({
+				items: "> .service-card",
+				handle: ".service-drag-handle",
+				cancel: "a, input, textarea, select, option, .service-actions-menu",
+				cursor: "grabbing",
+				tolerance: "pointer",
+				revert: 120,
+				placeholder: "service-card-placeholder",
+				forcePlaceholderSize: true,
+				update: function() {
+				var itemOrder = serviceGrid.sortable("toArray");
 				for (var i = 0; i < itemOrder.length; i++) {
 					var pos = i;
 					var id = itemOrder[i].split('-')[2]
 					change_pos(pos, id);
 				}
 			}
-		});
+			});
+		}
 		{% for s in services %}
 			{% if 'is not installed' in s.1 or s.1 == '' or user_subscription['user_status'] == 0 %}
 				{% if s.0 == 'roxy-wi-checker' %}
@@ -57,7 +60,30 @@
 		{% endfor %}
 	});
 </script>
-<div id="up-pannel" class="sortable">
+{% if not serv and servers|length %}
+<div class="service-overview-page">
+<div class="service-page-toolbar rw-table-toolbar" aria-label="{{lang.words.servers|title()}}">
+	<label class="rw-form-field" for="service-server-search">
+		<span>{{lang.ux.search}}</span>
+		<input type="search" id="service-server-search" placeholder="{{lang.ux.search}} {{lang.words.servers}}">
+	</label>
+	<label class="rw-form-field" for="service-status-filter">
+		<span>{{lang.words.status|title()}}</span>
+		<select id="service-status-filter" disabled>
+			<option value="all">{{lang.ux.all}}</option>
+			<option value="running">{{lang.words.running|title()}}</option>
+			<option value="stopped">{{lang.ux.stopped}}</option>
+			<option value="unavailable">{{lang.ux.unavailable}}</option>
+			<option value="stale">{{lang.ux.stale}}</option>
+		</select>
+	</label>
+	<span id="service-poll-summary" class="service-poll-summary" aria-live="polite">
+		<span class="fas fa-sync-alt service-poll-summary-icon" aria-hidden="true"></span>
+		{{lang.ux.status_updated}}: <time class="service-poll-summary-value">—</time>
+	</span>
+</div>
+{% endif %}
+<div id="up-pannel" class="sortable{% if serv %} service-detail-layout{% else %} service-card-grid{% endif %}" data-service="{{service}}" data-status-url="/service/{{service}}/statuses">
 	{%- for s in servers %}
 		{%- if serv %}
 			{% set config_id = 'id=config_link' %}
@@ -182,7 +208,8 @@
 			{% set is_checker_enabled = s.4.0.8 %}
 			{% set is_metrics_enabled = s.4.0.9 %}
 		{% endif %}
-		<div id="div-server-{{s.0}}" class="div-server-hapwi div-server-head-dis">
+		<div id="div-server-{{s.0}}" class="div-server-hapwi div-server-head-dis service-card rw-card" data-server-id="{{s.0}}" data-server-name="{{s.1|lower}}" data-service-status="unavailable"
+			 {% if not serv %}data-detail-url="{{ url_for('service.services', service=service, serv=s.2) }}" role="link" tabindex="0"{% endif %}>
 			<div class="server-name">
 				<input type="hidden" id="server-name-{{s.0}}" value="{{s.1}}" />
 				<input type="hidden" id="service" value="{{service}}" />
@@ -191,54 +218,50 @@
 				{% else %}
 					{{s.1}}
 				{% endif %}
+				<span id="service-status-{{s.0}}" class="rw-status-badge rw-status-stale service-status-badge">{{lang.words.status|title()}}…</span>
 				{% if s.5|int() >= 1 %}
 					<span
 						{% if keep_alive|int() >= 1 %}
-						class="shield green" title="Autostart {{lang.words.is}} {{lang.words.enabled2}}">
+						class="service-feature service-feature-enabled" title="Auto Start {{lang.words.is}} {{lang.words.enabled2}}"><span class="fas fa-shield-alt" aria-hidden="true"></span> {{lang.words.auto|title()}} {{lang.words.start}}
 						{% else %}
-						class="shield red" title="Autostart {{lang.words.is}} {{lang.words.enabled2}}, Auto start {{lang.words.service}} {{lang.words.is}} {{lang.words.not}} {{lang.words.running}}">
+						class="service-feature service-feature-disabled" title="Auto Start {{lang.words.service}} {{lang.words.is}} {{lang.words.not}} {{lang.words.running}}"><span class="fas fa-shield-alt" aria-hidden="true"></span> {{lang.words.auto|title()}} {{lang.words.start}}
 						{% endif %}
 					</span>
 				{% endif %}
 				{% if s.4.0.20 == 1 %}
-					<span class="lock" title="{{lang.phrases.server_is_inaccessible_for_editing}}"></span>
+					<span class="service-feature" title="{{lang.phrases.server_is_inaccessible_for_editing}}"><span class="fas fa-lock" aria-hidden="true"></span> {{lang.words.locked|default('Locked')|title()}}</span>
 				{% endif %}
 				{% for set in docker_settings %}
 					{% if set.server_id == s.0 and set.setting == 'dockerized' and set.value == '1' %}
-					<span class="box" title="This server is dockerized"></span>
+					<span class="service-feature" title="Docker"><span class="fas fa-box" aria-hidden="true"></span> Docker</span>
 					{% endif %}
 				{% endfor %}
 				{% if g.user_params['role'] <= 3 %}
-				<span class="server-action">
-					<a id="start-{{ s.2 }}" class="start" title="{{lang.words.start|title()}} {{service}} {{lang.words.service}}">
-						<span class="service-start" onclick="confirmAjaxAction('start', '{{service}}', '{{s.0}}')"></span>
-					</a>
-					<a id="reload-{{ s.2 }}" class="reload" title="{{lang.words.reload|title()}} {{service}} {{lang.words.service}}">
-						<span class="service-reload" onclick="confirmAjaxAction('reload', '{{service}}', '{{s.0}}')"></span>
-					</a>
+				<span class="server-action service-actions">
+					<button type="button" class="rw-icon-button service-actions-toggle" aria-expanded="false" title="{{lang.ux.actions}}" aria-label="{{lang.ux.actions}}">
+						<span class="fas fa-ellipsis-h" aria-hidden="true"></span>
+					</button>
+					<span class="service-actions-menu" hidden>
+					<button type="button" class="service-action-command" data-action="start" data-service="{{service}}" data-server-id="{{s.0}}"><span class="fas fa-play" aria-hidden="true"></span> {{lang.words.start|title()}}</button>
+					<button type="button" class="service-action-command" data-action="reload" data-service="{{service}}" data-server-id="{{s.0}}"><span class="fas fa-sync" aria-hidden="true"></span> {{lang.words.reload|title()}}</button>
 					{% for set in restart_settings %}
 						{% if set.server_id == s.0 and set.setting == 'restart' and set.value|int == 0 %}
-						<a id="restart-{{ s.2 }}" class="restart" title="{{lang.words.restart|title()}} {{service}} {{lang.words.service}}">
-							<span class="service-reload service-restart" onclick="confirmAjaxAction('restart', '{{service}}', '{{s.0}}')"></span>
-						</a>
+						<button type="button" class="service-action-command" data-action="restart" data-service="{{service}}" data-server-id="{{s.0}}"><span class="fas fa-redo" aria-hidden="true"></span> {{lang.words.restart|title()}}</button>
 						{% endif %}
 					{% endfor %}
 					{% if restart_settings|length == 0 %}
-						<a id="restart-{{ s.2 }}" class="restart" title="{{lang.words.restart|title()}} {{service}} {{lang.words.service}}">
-							<span class="service-reload service-restart" onclick="confirmAjaxAction('restart', '{{service}}', '{{s.0}}')"></span>
-						</a>
+						<button type="button" class="service-action-command" data-action="restart" data-service="{{service}}" data-server-id="{{s.0}}"><span class="fas fa-redo" aria-hidden="true"></span> {{lang.words.restart|title()}}</button>
 					{% endif %}
-					<a id="stop-{{ s.2 }}" class="stop" title="{{lang.words.stop|title()}} {{service}} {{lang.words.service}}">
-						<span class="service-stop" onclick="confirmAjaxAction('stop', '{{service}}', '{{s.0}}')"></span>
-					</a>
-					<a href="{{ url_for('main.service_history', service=service, server_ip=s.2) }}" title="{{lang.words.view|title()}} {{lang.words.history3}} {{s.1}}" class="history" style="margin: 0 5px 0 10px;"></a>
+					<button type="button" class="service-action-command service-action-danger" data-action="stop" data-service="{{service}}" data-server-id="{{s.0}}"><span class="fas fa-stop" aria-hidden="true"></span> {{lang.words.stop|title()}}</button>
+					<a href="{{ url_for('main.service_history', service=service, server_ip=s.2) }}"><span class="fas fa-history" aria-hidden="true"></span> {{lang.words.history3|title()}}</a>
 					{% if service != 'keepalived' %}
-					<span class="menu-bar" onclick="serverSettings('{{s.0}}', '{{s.1}}')" title="{{lang.words.edit|title()}} {{lang.words.settings}} {{s.1}}"></span>
+					<button type="button" class="service-settings-command" data-server-id="{{s.0}}" data-server-name="{{s.1}}"><span class="fas fa-cog" aria-hidden="true"></span> {{lang.words.settings|title()}}</button>
 					{% endif %}
-					{%if not serv%}
-					<span class="portlet-header" title="{{lang.words.change2|title()}} {{lang.words.position}} {{s.1}}">
-						<i class="fas fa-grip-vertical"></i>
 					</span>
+					{%if not serv%}
+					<button type="button" class="portlet-header service-drag-handle rw-icon-button" title="{{lang.words.change2|title()}} {{lang.words.position}} {{s.1}}" aria-label="{{lang.words.change2|title()}} {{lang.words.position}} {{s.1}}">
+						<i class="fas fa-grip-vertical"></i>
+					</button>
 					{%endif%}
 				</span>
 				{% endif %}
@@ -254,6 +277,7 @@
                 <b>{{lang.words.version|title()}}</b>: <span id="service-version-{{ s.0 }}"></span>
                 <b>{{lang.words.process_num|title()}}</b>: <span id="service-process_num-{{ s.0 }}"></span><br />
                 <b id="uptime-word-{{ s.0 }}">{{lang.words.uptime|title()}}</b>: <span id="service-uptime-{{ s.0 }}"></span>
+				<span class="service-last-checked"><b>{{lang.ux.last_checked}}:</b> <span id="service-last-checked-{{s.0}}">—</span></span>
 				<span title="Date of last configuration edit">
                     <b>{{lang.services.last_edit}}</b>:
 					<span id="edit_date_{{s.2}}"></span>
@@ -319,7 +343,7 @@
 				<a href="/config/{{service}}/{{s.2}}/show/undefined" {{config_id}} class="ui-button ui-widget ui-corner-all" title="{{lang.words.open|title()}} {{lang.words.running}} {{lang.words.config}}">{{lang.menu_links.config.link}}</a>
 				{% endif %}
 				<a href="/config/compare/{{service}}/{{s.2}}" {{compare_id}} class="ui-button ui-widget ui-corner-all" title="{{lang.words.compare|title()}} {{lang.words.configs}}">{{lang.words.compare|title()}}</a>
-			{% if service == 'haproxy' %}
+			{% if service == 'haproxy' or service == 'nginx' %}
 				<a href="/config/map/{{service}}/{{s.2}}" class="ui-button ui-widget ui-corner-all" {{map_id}} title="{{lang.words.show|title()}} {{lang.words.map}}">{{lang.words.map|title()}}</a>
 			{% endif %}
 			{% if service != 'keepalived' %}
@@ -349,6 +373,9 @@
 		{% endif %}
 	{% endfor %}
 </div>
+	{% if not serv and servers|length %}
+</div>
+	{% endif %}
 	{% if serv %}
 	{% for s in servers %}
 	{% if service in ('haproxy', 'nginx', 'apache') %}
@@ -398,10 +425,7 @@
 	{% if serv %}
 		overviewHapserverBackends(ip, hostnamea, '{{service}}');
 	{% endif %}
+	initializeServiceStatusPolling('{{service}}', [{% for s in servers %}{{s.0}}{% if not loop.last %}, {% endif %}{% endfor %}]);
 	showHapservers(ip, hostnamea, '{{service}}');
-    {% for s in servers %}
-        sessionStorage.removeItem('check-service-{{ service }}-{{s.0}}')
-        check_service_status({{s.0}}, '{{s.2}}', '{{service}}');
-    {% endfor %}
 </script>
 {% endblock %}

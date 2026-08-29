@@ -98,9 +98,14 @@ def return_ssh_keys_path(server_ip: str, cred_id: int = None) -> dict:
 	return ssh_settings
 
 
-def ssh_connect(server_ip):
+def ssh_connect(server_ip, connect_timeout: int = 11, banner_timeout: int = 200):
 	ssh_settings = return_ssh_keys_path(server_ip)
-	ssh = ssh_connection.SshConnection(server_ip, ssh_settings)
+	ssh = ssh_connection.SshConnection(
+		server_ip,
+		ssh_settings,
+		connect_timeout=connect_timeout,
+		banner_timeout=banner_timeout,
+	)
 
 	return ssh
 

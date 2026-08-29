@@ -123,9 +123,50 @@
     },
     "udp": {
         "title": "Écouteurs UDP"
+    },
+    "navigation": {
+        "label": "Navigation principale",
+        "search": "Rechercher des pages",
+        "operations": "Opérations",
+        "administration": "Administration",
+        "collapse": "Réduire la navigation",
+        "expand": "Développer la navigation",
+        "submenu": "sous-menu",
+        "no_results": "Aucune page correspondante"
     }
 }
 %}
+{% set ux = {
+    "search": "Rechercher",
+    "all": "Tous",
+    "stopped": "Arrêté",
+    "unavailable": "Indisponible",
+    "stale": "État obsolète",
+    "actions": "Actions",
+    "last_checked": "Dernière vérification",
+    "status_updated": "Statuts mis à jour",
+    "result": "Résultat",
+    "choose_tool": "Choisissez un outil et lancez-le",
+    "unsaved_changes": "Modifications non enregistrées",
+    "saved": "Enregistré",
+    "no_unsaved_changes": "Aucune modification non enregistrée",
+    "draft_available": "Un brouillon local plus récent est disponible",
+    "restore": "Restaurer le brouillon",
+    "discard": "Supprimer le brouillon",
+    "review_changes": "Vérifier les modifications",
+    "affected_servers": "Serveurs concernés",
+    "validation": "Résultat de la validation",
+    "no_changes": "Aucune modification",
+    "leave_warning": "La configuration contient des modifications non enregistrées.",
+    "direct_apply_warning": "Vérifiez le diff avant d'appliquer directement cette configuration.",
+    "operation_failed": "Échec de l'opération",
+    "raw_output": "Sortie complète",
+        "reason": "Cause",
+        "what_failed": "Échec",
+        "next_action": "Étape suivante",
+        "retry_action": "Réessayer",
+        "open_logs": "Ouvrir les journaux"
+} %}
 {% set change_center = {
     "intro": "Validez, approuvez, déployez et annulez les modifications de configuration depuis un seul endroit.",
     "premium_required": "Change Center est disponible uniquement avec un forfait Premium actif.",

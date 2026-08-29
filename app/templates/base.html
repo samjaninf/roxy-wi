@@ -20,7 +20,13 @@
 			  data-installing="{{lang.words.installing|title()}}" data-creating="{{lang.words.creating|title()}}" data-roxywi_timeout="{{lang.ha_page.roxywi_timeout}}"
 			  data-check_apache_log="{{lang.ha_page.check_apache_log}}" data-was_installed="{{lang.ha_page.was_installed}}" data-start_enter="{{lang.ha_page.start_enter}}"
 			  data-apply="{{lang.words.apply|title()}}" data-reconfigure="{{lang.words.reconfigure|title()}}" data-server="{{lang.words.server|title()}}" data-port="{{lang.words.port}}"
-              data-weight="{{lang.words.weight}}" data-uptime="{{lang.words.uptime}}" data-downtime="{{lang.words.downtime}}" data-create="{{lang.words.create|title()}}" />
+			  data-weight="{{lang.words.weight}}" data-uptime="{{lang.words.uptime}}" data-downtime="{{lang.words.downtime}}" data-create="{{lang.words.create|title()}}"
+			  data-action="{{lang.words.action|title()}}" data-retry="{{lang.words.retry|title()}}" data-operation_failed="{{lang.words.error|title()}}"
+			  data-confirm="{{lang.words.confirm|title()}}" data-running="{{lang.words.running|title()}}" data-stopped="{{lang.ux.stopped}}"
+			  data-unavailable="{{lang.ux.unavailable}}" data-stale="{{lang.ux.stale}}" data-search="{{lang.ux.search}}"
+			  data-no-results="{{lang.menu_links.navigation.no_results}}" data-reason="{{lang.ux.reason}}"
+			  data-what-failed="{{lang.ux.what_failed}}" data-next-action="{{lang.ux.next_action}}"
+			  data-retry-action="{{lang.ux.retry_action}}" data-open-logs="{{lang.ux.open_logs}}" />
         {% include 'include/main_head.html' %}
 	</head>
 	<body>
@@ -28,6 +34,10 @@
             <input type="hidden" id="user_group_socket" value="{{ g.user_params['group_id'] }}">
             <input type="hidden" id="user_id_socket" value="{{ g.user_params['user_id'] }}">
 		{% include 'include/main_menu.html' %}
+		<button type="button" id="app-mobile-nav-toggle" class="app-mobile-nav-toggle" aria-controls="app-navigation" aria-expanded="false" aria-label="{{ lang.menu_links.navigation.label }}">
+			<span class="fas fa-bars" aria-hidden="true"></span>
+		</button>
+		<button type="button" id="app-nav-backdrop" class="app-nav-backdrop" aria-label="{{ lang.words.close|title() }} {{ lang.menu_links.navigation.label }}"></button>
 		<div class="container">
 			<h2>
 				{% block h2 %}{% endblock %}
@@ -52,18 +62,6 @@
 			</div>
 		</div>	
 		<div class="footer">
-			<a href="#" id="hide_menu" title="{{lang.words.hide|title()}} {{lang.words.menu}}" style="float: left;">
-				<span class="ui-state-default ui-corner-all">
-					<span class="ui-icon ui-icon-arrowthick-1-w" id="arrow"></span>
-				</span>
-			</a>
-			<div class="show_menu" style="display: none; float: left;">
-				<a href="#" id="show_menu" title="{{lang.words.show|title()}} {{lang.words.menu}}">
-					<span class="ui-state-default ui-corner-all">
-						<span class="ui-icon ui-icon-arrowthick-1-e" id="arrow"></span>
-					</span>
-				</a>
-			</div>
 			<div id="version"></div>
 			<div class="footer-div">
 				<div id="useful-links">

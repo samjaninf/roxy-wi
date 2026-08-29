@@ -2,7 +2,7 @@
 {% from 'include/input_macros.html' import copy_to_clipboard %}
 <link rel="stylesheet" href="/static/js/diff2html/diff2html.min.css">
 <script src="/static/js/diff2html/diff2html.min.js"></script>
-<script src="/static/js/diff2html/diff2html-ui.min.js"></script>
+<script src="{{ url_for('static', filename='js/diff2html/diff2html-ui.min.js', v='7a22ebb') }}"></script>
 <script src="/static/js/configshow.js"></script>
 {% if for_delver == '1' %}
 <script>

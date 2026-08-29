@@ -1,4 +1,5 @@
 import json
+from html import escape
 
 import whois
 import netaddr
@@ -23,7 +24,6 @@ def ping_from_server(server_from: str, server_to: str, action: str) -> Response:
         raise Exception('warning: Wrong IP address or name')
 
     def paint_output(generated):
-        yield '<div class="ping_pre">'
         for k in generated:
             try:
                 k = k.decode('utf-8')
@@ -32,15 +32,15 @@ def ping_from_server(server_from: str, server_to: str, action: str) -> Response:
             for i in k.split('\n'):
                 if i == ' ' or i == '':
                     continue
+                safe_line = escape(i)
                 if 'PING' in i:
-                    yield f'<span style="color: var(--link-dark-blue); display: block; margin-top: -5px;">{i}</span><br />\n'
+                    yield f'<span style="color: var(--link-dark-blue); display: block; margin-top: -5px;">{safe_line}</span><br />\n'
                 elif i in ('no reply', 'no answer yet', 'Too many hops', '100% packet loss'):
-                    yield f'<span style="color: var(--red-color);">{i}</span><br />\n'
+                    yield f'<span style="color: var(--red-color);">{safe_line}</span><br />\n'
                 elif 'ms' in i and '100% packet loss' not in i:
-                    yield f'<span style="color: var(--green-color);">{i}</span><br />\n'
+                    yield f'<span style="color: var(--green-color);">{safe_line}</span><br />\n'
                 else:
-                    yield f'{i}<br />'
-        yield '</div>'
+                    yield f'{safe_line}<br />'
 
     if action in ('nettools_ping', 'ping'):
         executable = 'ping'
@@ -84,15 +84,15 @@ def telnet_from_server(server_from: str, server_to: str, port_to: int) -> str:
         output = _text_lines(output)
 
     if stderr != '':
-        return f'error: <b>{stderr[5:]}</b>'
+        return f'error: <b>{escape(stderr[5:])}</b>'
 
     for i in output:
         if i == ' ':
             continue
         i = i.strip()
         if i == 'Ncat: Connection timed out.':
-            return f'error: <b>{i[5:]}</b>'
-        output1 += i + '<br>'
+            return f'error: <b>{escape(i[5:])}</b>'
+        output1 += escape(i) + '<br>'
         count_string += 1
         if count_string > 1:
             break
@@ -125,7 +125,8 @@ def nslookup_from_server(server_from: str, dns_name: str, record_type: str) -> s
     if stderr != '':
         return 'error: ' + stderr[5:-1]
 
-    output1 += f'<b style="display: block; margin-top:10px;">The <i style="color: var(--blue-color)">{dns_name}</i> domain has the following records:</b>'
+    safe_dns_name = escape(dns_name)
+    output1 += f'<b style="display: block; margin-top:10px;">The <i style="color: var(--blue-color)">{safe_dns_name}</i> domain has the following records:</b>'
     for i in output:
         if 'dig: command not found.' in i:
             return 'error: Install bind-utils before using NSLookup'
@@ -137,7 +138,7 @@ def nslookup_from_server(server_from: str, dns_name: str, record_type: str) -> s
             i = i[10:]
             output1 += '<br><b>From NS server:</b><br>'
         i = i.strip()
-        output1 += '<i>' + i + '</i><br>'
+        output1 += '<i>' + escape(i) + '</i><br>'
         count_string += 1
 
     return output1
@@ -151,17 +152,17 @@ def whois_check(domain_name: str) -> str:
     except Exception as e:
         return f'error: Cannot get whois from {domain_name}: {e}'
 
-    output = (f'<b>Domain name:</b> {whois_data["domain_name"]}<br />'
-              f'<b>Registrar:</b> {whois_data["registrar"]} <br />'
-              f'<b>Creation date:</b> {whois_data["creation_date"]} <br />'
-              f'<b>Expiration date:</b> {whois_data["expiration_date"]} <br />'
-              f'<b>Name servers:</b> {whois_data["name_servers"]} <br />'
-              f'<b>Status:</b> {whois_data["status"]} <br />')
+    output = (f'<b>Domain name:</b> {escape(str(whois_data["domain_name"]))}<br />'
+              f'<b>Registrar:</b> {escape(str(whois_data["registrar"]))} <br />'
+              f'<b>Creation date:</b> {escape(str(whois_data["creation_date"]))} <br />'
+              f'<b>Expiration date:</b> {escape(str(whois_data["expiration_date"]))} <br />'
+              f'<b>Name servers:</b> {escape(str(whois_data["name_servers"]))} <br />'
+              f'<b>Status:</b> {escape(str(whois_data["status"]))} <br />')
 
     if 'emails' in whois_data:
-        output += f'<b>Emails:</b> {whois_data["emails"]} <br />'
+        output += f'<b>Emails:</b> {escape(str(whois_data["emails"]))} <br />'
     if 'org' in whois_data:
-        output += f'<b>Organization:</b> {whois_data["org"]} <br />'
+        output += f'<b>Organization:</b> {escape(str(whois_data["org"]))} <br />'
 
     return output
 

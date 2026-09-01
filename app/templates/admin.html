@@ -3,6 +3,7 @@
 {% block h2 %}{{lang.words.admin_area|title()}}{% endblock %}
 {% block content %}
 {% from 'include/input_macros.html' import input, select, copy_to_clipboard, checkbox %}
+{% from 'include/admin_action_menu.html' import admin_action_menu %}
 <script src="{{ url_for('static', filename='js/admin/common.js') }}"></script>
 <script src="{{ url_for('static', filename='js/admin/group.js') }}"></script>
 <script src="{{ url_for('static', filename='js/admin/server.js') }}"></script>
@@ -10,6 +11,7 @@
 <script src="{{ url_for('static', filename='js/admin/user.js') }}"></script>
 <script src="{{ url_for('static', filename='js/backup.js') }}"></script>
 <script src="{{ url_for('static', filename='js/fontawesome.min.js') }}"></script>
+<script id="deployment-policy-translations" type="application/json">{{ lang.deployment_policy|tojson }}</script>
 {% include 'include/del_confirm.html' %}
 <div id="tabs">
 	<ul id="admin-tabs">
@@ -38,7 +40,7 @@
 				<th class="padding10" style="width: 0;">Id</th>
 				<th class="padding10 first-collumn">{{lang.words.name|title()}}</th>
 				<th style="width: 100%;">{{lang.words.desc|title()}}</th>
-				<th></th>
+				<th class="admin-actions-cell">{{lang.words.actions|title()}}</th>
 			</tr>
 			<tbody>
 		{% for group in groups %}
@@ -47,7 +49,14 @@
 			{% if group.name == "Default" %}
 				<td class="padding10 first-collumn">{{ group.name }}</td>
 				<td>{{ group.description }}</td>
-				<td></td>
+				<td class="admin-actions-cell">
+					{% call admin_action_menu(lang.words.actions|title()) %}
+						<button type="button" class="admin-action-item group-deployment-policy-button"
+							data-group-id="{{group.group_id}}" data-group-name="{{group.name}}">
+							<span class="fas fa-shield-alt" aria-hidden="true"></span> {{lang.deployment_policy.configure}}
+						</button>
+					{% endcall %}
+				</td>
 			{% else %}
 				<td class="padding10 first-collumn">
 					{% set id = 'name-' + group.group_id|string() %}
@@ -61,8 +70,16 @@
 						{{ input(id, value='', size='60') }}
 					{% endif %}
 				</td>
-				<td>
-					<a class="delete" onclick="confirmDeleteGroup({{ group.group_id }})" title="{{lang.words.delete|title()}} {{lang.words.group2}} {{group.name}}" style="cursor: pointer;"></a>
+				<td class="admin-actions-cell">
+					{% call admin_action_menu(lang.words.actions|title()) %}
+						<button type="button" class="admin-action-item group-deployment-policy-button"
+							data-group-id="{{group.group_id}}" data-group-name="{{group.name}}">
+							<span class="fas fa-shield-alt" aria-hidden="true"></span> {{lang.deployment_policy.configure}}
+						</button>
+						<button type="button" class="admin-action-item admin-action-item-danger" onclick="confirmDeleteGroup({{ group.group_id }})">
+							<span class="fas fa-trash-alt" aria-hidden="true"></span> {{lang.words.delete|title()}}
+						</button>
+					{% endcall %}
 				</td>
 			{% endif %}
 			</tr>
@@ -70,6 +87,23 @@
 			</tbody>
 		</table>
 		<br /><span class="add-button" title="{{lang.words.add|title()}} {{lang.words.group2}}" id="add-group-button">+ {{lang.words.add|title()}}</span>
+		<div id="group-deployment-policy-dialog" title="{{lang.deployment_policy.title}}" style="display: none;">
+			<input type="hidden" id="deployment-policy-group-id">
+			<p class="deployment-policy-group-name"><b id="deployment-policy-group-name"></b></p>
+			<p>{{lang.deployment_policy.help}}</p>
+			<form id="group-deployment-policy-form" class="deployment-policy-grid">
+				{% for service in ('haproxy', 'nginx', 'apache', 'keepalived') %}
+				<label for="deployment-policy-{{service}}">
+					<span>{{service|title}}</span>
+					<select id="deployment-policy-{{service}}" name="{{service}}">
+						<option value="both">{{lang.deployment_policy.modes.both}}</option>
+						<option value="change_center">{{lang.deployment_policy.modes.change_center}}</option>
+						<option value="direct">{{lang.deployment_policy.modes.direct}}</option>
+					</select>
+				</label>
+				{% endfor %}
+			</form>
+		</div>
 		<br /><br />
 		<div class="add-note alert addName alert-info" style="width: inherit; margin-right: 15px;">
 			{{lang.phrases.read_howto}} <a href="https://roxy-wi.org/howto/roles-and-groups" title="How to use groups and roles" target="_blank">{{lang.words.article}}</a>
@@ -96,7 +130,7 @@
 					<td class="padding10 first-collumn" style="width: 25%;">
 						{{lang.words.service|title()}}
 					</td>
-					<td class="padding10 first-collumn">
+					<td class="padding10 first-collumn admin-actions-cell">
 						{{lang.words.actions|title()}}
 					</td>
 					<td class="first-collumn">{{lang.words.version|title()}}</td>
@@ -118,7 +152,7 @@
 				<td class="padding10 first-collumn" style="width: 25%;">{{lang.words.service|title()}}</td>
 				<td class="first-collumn" style="width: 10%">{{lang.words.current2|title()}} {{lang.words.version}}</td>
 				<td class="padding10" style="width: 10%">{{lang.words.latest|title()}} {{lang.words.version}}</td>
-				<td style="width: 10%"></td>
+				<td class="admin-actions-cell">{{lang.words.actions|title()}}</td>
 				<td style="width: 100%">{{lang.words.desc|title()}}</td>
 				<td><span onclick="checkUpdateRoxy()" class="refresh service-restart" title="{{lang.words.check|title()}} {{lang.words.new4}} {{lang.words.versions}}"></span></td>
 				<td><span onclick="loadupdatehapwi()" class="refresh" title="{{lang.words.refresh|title()}}"></span></td>

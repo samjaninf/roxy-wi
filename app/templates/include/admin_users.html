@@ -1,20 +1,16 @@
 {% from 'include/input_macros.html' import input, checkbox %}
+{% from 'include/admin_action_menu.html' import admin_action_menu %}
 {% if not adding %}
 <table class="overview" id="ajax-users">
 	<thead>
 		<tr class="overviewHead">
 			<th class="padding10 first-collumn" id="user-login-th">{{lang.words.login|title()}}</th>
-			<th style="width: 10%">{{lang.words.password|title()}}</th>
 			<th style="width: 10%" class="checkbox-head" id="user-active-th">{{lang.words.active|title()}}</th>
 			<th style="width: 20%">{{lang.words.email|title()}}</th>
 			{% if g.user_params['role'] == 2 %}
 			<th style="width: 10%" id="user-role-th">{{lang.words.role|title()}}</th>
-			{% else %}
-				<th style="width: 10%" id="user-group-role-th">{{lang.words.groups|title()}} {{lang.words.and}} {{lang.words.roles|title()}}</th>
 			{% endif %}
-			<th style="width: 100%" id="user-services-th">{{lang.words.services|title()}}</th>
-			<th></th>
-			<th></th>
+			<th class="admin-actions-cell">{{lang.words.actions|title()}}</th>
 		</tr>
 	</thead>
 	<tbody>
@@ -37,12 +33,6 @@
 					{{ input(login_id, value=user.username, disabled=disable_superAdmin['disabled']) }}
 				{% endif %}
 			</td>
-			<td>
-				{% if user.ldap_user != 1 and not disable_superAdmin['disabled'] %}
-				<span title="{{lang.words.change|title()}} {{lang.words.password}}" style="cursor: pointer; margin-left: 15px;" class="div-pic" onclick="openChangeUserPasswordDialog('{{user.user_id}}')">
-				</span>
-				{% endif %}
-			</td>
 			<td class="checkbox">
 				{% set activeuser_id = 'activeuser-' + user.user_id|string() %}
 				{% if user.enabled == 1 %}
@@ -59,8 +49,8 @@
 					{{ input(email_id, value=user.email, type='email', disabled=disable_superAdmin['disabled']) }}
 				{% endif %}
 			</td>
+			{% if g.user_params['role'] == 2 %}
 			<td>
-                {% if g.user_params['role'] == 2 %}
 				<select id="role-{{user.user_id}}" name="role-{{user.user_id}}" {{disable_superAdmin['disabled']}}>
 					<option disabled selected>Select a role</option>
 					{% for r in roles %}
@@ -75,18 +65,30 @@
 						{% endfor %}
 					{% endfor %}
 				</select>
-				{% else %}
-				<span title="{{lang.words.change2|title()}} {{lang.words.user3}} {{lang.words.groups}} {{lang.words.and}} {{lang.words.roles}}" style="cursor: pointer; margin-left: 40px;" class="div-pic" onclick="confirmChangeGroupsAndRoles('{{user.user_id}}')"></span>
-				{% endif %}
 			</td>
-			<td>
-				<span title="{{lang.words.change2|title()}} {{lang.words.user3}} {{lang.words.services}}" style="cursor: pointer; margin-left: 15px;" class="div-pic" onclick="openChangeUserServiceDialog('{{user.user_id}}')"></span>
-			</td>
-			<td>
-				<a href="/history/user/{{user.user_id}}" title="{{lang.words.view|title()}} {{lang.words.history}} {{lang.words.for}} {{lang.words.user2}}" class="history"></a>
-			</td>
-			<td>
-				<a class="delete" onclick="confirmDeleteUser({{user.user_id}})" title="{{lang.words.delete|title()}} {{user.username}}" style="cursor: pointer;"></a>
+			{% endif %}
+			<td class="admin-actions-cell">
+				{% call admin_action_menu(lang.words.actions|title()) %}
+					{% if user.ldap_user != 1 and not disable_superAdmin['disabled'] %}
+					<button type="button" class="admin-action-item" onclick="openChangeUserPasswordDialog('{{user.user_id}}')">
+						<span class="fas fa-key" aria-hidden="true"></span> {{lang.words.change|title()}} {{lang.words.password}}
+					</button>
+					{% endif %}
+					{% if g.user_params['role'] != 2 %}
+					<button type="button" class="admin-action-item" onclick="confirmChangeGroupsAndRoles('{{user.user_id}}')">
+						<span class="fas fa-users" aria-hidden="true"></span> {{lang.words.change2|title()}} {{lang.words.groups|title()}} / {{lang.words.roles|title()}}
+					</button>
+					{% endif %}
+					<button type="button" class="admin-action-item" onclick="openChangeUserServiceDialog('{{user.user_id}}')">
+						<span class="fas fa-cogs" aria-hidden="true"></span> {{lang.words.change2|title()}} {{lang.words.services|title()}}
+					</button>
+					<a class="admin-action-item" href="/history/user/{{user.user_id}}">
+						<span class="fas fa-history" aria-hidden="true"></span> {{lang.words.view|title()}} {{lang.words.history}}
+					</a>
+					<button type="button" class="admin-action-item admin-action-item-danger" onclick="confirmDeleteUser({{user.user_id}})">
+						<span class="fas fa-trash-alt" aria-hidden="true"></span> {{lang.words.delete|title()}}
+					</button>
+				{% endcall %}
 			</td>
 		</tr>
 	{% endfor %}

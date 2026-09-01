@@ -39,20 +39,21 @@ def before_request():
 
 
 def _error_response(exc: Exception):
-    error_message = str(exc)
     if isinstance(exc, RoxywiResourceNotFound):
         status_code = 404
     elif isinstance(exc, RoxywiPermissionError):
         status_code = 403
     elif isinstance(exc, RoxywiConflictError):
         status_code = 409
-    elif isinstance(exc, (RoxywiValidationError, ValueError)):
+    elif isinstance(exc, RoxywiValidationError):
         status_code = 400
+    elif isinstance(exc, ValueError):
+        roxywi_common.logging('Roxy-WI server', f'error: Invalid Change Center request: {exc}')
+        return jsonify({'status': 'failed', 'error': 'Invalid request'}), 400
     else:
         roxywi_common.logging('Roxy-WI server', f'error: Change Center operation failed: {exc}')
-        status_code = 500
-        error_message = 'Internal server error'
-    return jsonify({'status': 'failed', 'error': error_message}), status_code
+        return jsonify({'status': 'failed', 'error': 'Internal server error'}), 500
+    return jsonify({'status': 'failed', 'error': exc.public_message}), status_code
 
 
 def _get_active_group_change(change_id: int):

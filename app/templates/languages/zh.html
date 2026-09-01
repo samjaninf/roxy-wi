@@ -241,6 +241,19 @@
         "auto_rollback_failed": "部署和自动回滚均失败", "cancelled": "已取消"
     }
 } %}
+{% set deployment_policy = {
+    "title": "配置部署策略",
+    "configure": "配置部署策略",
+    "help": "为此组中的每个服务选择配置变更的部署方式。所有模式下都可以执行配置校验。",
+    "modes": {"both": "直接部署和 Change Center", "change_center": "必须使用 Change Center", "direct": "仅直接部署"},
+    "save": "保存策略",
+    "cancel": "取消",
+    "saved": "部署策略已保存",
+    "load_error": "无法加载部署策略",
+    "save_error": "无法保存部署策略",
+    "change_center_only": "必须使用 Change Center",
+    "direct_disabled_help": "此服务和组已禁用直接部署。请先在此处验证配置，然后在 Change Center 中创建变更。"
+} %}
 {% set services = {
     "hapservers_desc": "检测器监控服务。如果服务状态更改，检测器将通过 Telegram、Slack、电子邮件或 Web 发送警报。",
     "last_edit": "上次编辑"

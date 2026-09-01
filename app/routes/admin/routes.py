@@ -70,10 +70,7 @@ def admin():
 def show_tools():
     roxywi_auth.page_for_admin()
     lang = roxywi_common.get_user_lang_for_flask()
-    try:
-        services = tools_common.get_services_status(update_cur_ver=1)
-    except Exception as e:
-        return str(e)
+    services = tools_common.get_services_status(update_cur_ver=1)
 
     return render_template('ajax/load_services.html', services=services, lang=lang)
 

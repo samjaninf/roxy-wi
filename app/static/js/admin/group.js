@@ -1,6 +1,17 @@
+let groupDeploymentPolicyDialog;
+let deploymentPolicyTranslations = {};
+
 $( function() {
+	try {
+		deploymentPolicyTranslations = JSON.parse($('#deployment-policy-translations').text() || '{}');
+	} catch (_error) {
+		deploymentPolicyTranslations = {};
+	}
 	$('#add-group-button').click(function () {
 		addGroupDialog.dialog('open');
+	});
+	$('#ajax-group').on('click', '.group-deployment-policy-button', function () {
+		loadGroupDeploymentPolicy($(this).data('group-id'), $(this).data('group-name'));
 	});
 	let group_tabel_title = $("#group-add-table-overview").attr('title');
 	let addGroupDialog = $("#group-add-table").dialog({
@@ -28,6 +39,22 @@ $( function() {
 			}
 		}
 	});
+	groupDeploymentPolicyDialog = $('#group-deployment-policy-dialog').dialog({
+		autoOpen: false,
+		resizable: false,
+		height: 'auto',
+		width: 620,
+		modal: true,
+		dialogClass: 'deployment-policy-modal',
+		buttons: [{
+			text: deploymentPolicyTranslations.save || 'Save policy',
+			click: saveGroupDeploymentPolicy
+		}, {
+			text: deploymentPolicyTranslations.cancel || 'Cancel',
+			click: function () { $(this).dialog('close'); }
+		}]
+	});
+	$('#group-deployment-policy-form select').selectmenu({width: '100%'});
 	$("#ajax-group input").change(function () {
 		let id = $(this).attr('id').split('-');
 		updateGroup(id[1])
@@ -56,6 +83,7 @@ function addGroup(dialog_id) {
 					toastr.error(data);
 				} else {
 					let id = data.id;
+					let actionsLabel = $('#ajax-group th.admin-actions-cell').text().trim() || 'Actions';
 					$('select:regex(id, group)').append('<option value=' + id + '>' + $('#new-group-add').val() + '</option>').selectmenu("refresh");
 					let new_group = elem("tr", {"id":"group-"+id,"class":"newgroup"}, [
                         elem("td", {"class":"padding10","style":"width: 0"}, id),
@@ -65,15 +93,87 @@ function addGroup(dialog_id) {
                         elem("td", null, [
                             elem("input", {"type":"text","name":"descript-"+id,"value":desc,"id":"descript-"+id,"size":"60","class":"form-control","autocomplete":"off"})
                         ]),
-                        elem("td", null, [
-                            elem("a", {"class":"delete","onclick":"confirmDeleteGroup("+id+")","title":"Delete group "+name,"style":"cursor: pointer;"})
-                        ])
+						elem("td", {"class":"admin-actions-cell"}, [
+							elem("div", {"class":"admin-actions"}, [
+								elem("button", {
+									"type":"button", "class":"rw-icon-button admin-actions-toggle",
+									"aria-haspopup":"menu", "aria-expanded":"false",
+									"title":actionsLabel, "aria-label":actionsLabel
+								}, [elem("span", {"class":"fas fa-ellipsis-h", "aria-hidden":"true"})]),
+								elem("div", {"class":"admin-actions-menu", "role":"menu", "hidden":"hidden"}, [
+									elem("button", {
+										"type":"button", "class":"admin-action-item group-deployment-policy-button",
+										"data-group-id":id, "data-group-name":name
+									}, [
+										elem("span", {"class":"fas fa-shield-alt", "aria-hidden":"true"}),
+										deploymentPolicyTranslations.configure || "Configure deployment policy"
+									]),
+									elem("button", {
+										"type":"button", "class":"admin-action-item admin-action-item-danger",
+										"onclick":"confirmDeleteGroup("+id+")"
+									}, [
+										elem("span", {"class":"fas fa-trash-alt", "aria-hidden":"true"}),
+										delete_word
+									])
+								])
+							])
+						])
                     ])
                     common_ajax_action_after_success(dialog_id, 'newgroup', 'ajax-group', new_group);
 				}
 			}
 		});
 	}
+}
+
+function deploymentPolicyError(xhr, fallback) {
+	let response = xhr && xhr.responseJSON;
+	return response && response.error ? response.error : fallback;
+}
+
+function loadGroupDeploymentPolicy(groupId, groupName) {
+	$.ajax({
+		url: '/server/group/' + groupId + '/deployment-policy',
+		type: 'GET',
+		dataType: 'json',
+		success: function (response) {
+			$('#deployment-policy-group-id').val(groupId);
+			$('#deployment-policy-group-name').text(groupName);
+			Object.keys(response.data).forEach(function (service) {
+				let select = $('#deployment-policy-' + service);
+				select.val(response.data[service]);
+				if (select.selectmenu('instance')) {
+					select.selectmenu('refresh');
+				}
+			});
+			groupDeploymentPolicyDialog.dialog('open');
+		},
+		error: function (xhr) {
+			toastr.error(deploymentPolicyError(xhr, deploymentPolicyTranslations.load_error || 'Cannot load deployment policy'));
+		}
+	});
+}
+
+function saveGroupDeploymentPolicy() {
+	let groupId = $('#deployment-policy-group-id').val();
+	let policy = {};
+	$('#group-deployment-policy-form select').each(function () {
+		policy[this.name] = $(this).val();
+	});
+	$.ajax({
+		url: '/server/group/' + groupId + '/deployment-policy',
+		type: 'PUT',
+		data: JSON.stringify(policy),
+		contentType: 'application/json; charset=utf-8',
+		dataType: 'json',
+		success: function () {
+			groupDeploymentPolicyDialog.dialog('close');
+			toastr.success(deploymentPolicyTranslations.saved || 'Deployment policy saved');
+		},
+		error: function (xhr) {
+			toastr.error(deploymentPolicyError(xhr, deploymentPolicyTranslations.save_error || 'Cannot save deployment policy'));
+		}
+	});
 }
 function updateGroup(id) {
 	toastr.clear();

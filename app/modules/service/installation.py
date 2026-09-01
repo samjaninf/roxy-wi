@@ -10,6 +10,7 @@ from packaging import version
 from urllib.parse import urlparse
 
 import ansible
+from werkzeug.utils import secure_filename
 
 import app.modules.db.sql as sql
 import app.modules.db.add as add_sql
@@ -29,6 +30,17 @@ from app.modules.roxywi.class_models import ServiceInstall, HAClusterRequest, Ha
 
 ANSIBLE_PRIVATE_DATA_DIR = '/var/www/haproxy-wi/app/scripts/ansible'
 ANSIBLE_INVENTORY_DIR = f'{ANSIBLE_PRIVATE_DATA_DIR}/inventory'
+_ANSIBLE_ROLE_NAMES = (
+	'apache', 'apache_exporter', 'backup', 'git_backup', 'haproxy',
+	'haproxy_exporter', 'haproxy_geoip', 'haproxy_section', 'keepalived',
+	'keepalived_exporter', 'letsencrypt', 'letsencrypt_standalone', 'nginx',
+	'nginx_exporter', 'nginx_geoip', 'nginx_section', 'node_exporter',
+	's3_backup', 'smon_agent', 'udp', 'waf_haproxy', 'waf_nginx',
+)
+_ANSIBLE_PLAYBOOKS = {
+	role: f'{ANSIBLE_PRIVATE_DATA_DIR}/roles/{role}.yml'
+	for role in _ANSIBLE_ROLE_NAMES
+}
 
 
 def _ansible_runner():
@@ -46,14 +58,21 @@ def _authorize_installation_servers(json_data: dict) -> None:
 		roxywi_common.require_active_group_access(server.group_id)
 
 
-def _create_secure_inventory(inv: dict, ansible_role: str) -> str:
+def _ansible_playbook(ansible_role: str) -> str:
+	try:
+		return _ANSIBLE_PLAYBOOKS[ansible_role]
+	except (KeyError, TypeError) as exc:
+		raise ValueError('Unsupported Ansible role') from exc
+
+
+def _create_secure_inventory(inv: dict) -> str:
 	"""Write an Ansible inventory to a unique owner-only temporary file."""
 	os.makedirs(ANSIBLE_INVENTORY_DIR, mode=0o700, exist_ok=True)
 	if os.name == 'posix':
 		os.chmod(ANSIBLE_INVENTORY_DIR, 0o700)
 
 	file_descriptor, inventory = tempfile.mkstemp(
-		prefix=f'{ansible_role}-', suffix='.json', dir=ANSIBLE_INVENTORY_DIR, text=True
+		prefix='roxywi-inventory-', suffix='.json', dir=ANSIBLE_INVENTORY_DIR, text=True
 	)
 	try:
 		with os.fdopen(file_descriptor, 'w', encoding='utf-8') as inventory_file:
@@ -75,9 +94,26 @@ def _create_secure_inventory(inv: dict, ansible_role: str) -> str:
 
 
 def _remove_inventory(inventory: str) -> None:
-	if inventory and os.path.exists(inventory):
+	if not inventory:
+		return
+	inventory_root = os.path.realpath(ANSIBLE_INVENTORY_DIR)
+	inventory_name = os.path.basename(inventory)
+	safe_name = secure_filename(inventory_name)
+	if (
+		not safe_name
+		or safe_name != inventory_name
+		or not safe_name.startswith('roxywi-inventory-')
+		or not safe_name.endswith('.json')
+	):
+		roxywi_common.logging('Roxy-WI server', 'error: Refusing to remove an invalid Ansible inventory path')
+		return
+	safe_inventory = os.path.realpath(os.path.join(inventory_root, safe_name))
+	if os.path.dirname(safe_inventory) != inventory_root or os.path.realpath(inventory) != safe_inventory:
+		roxywi_common.logging('Roxy-WI server', 'error: Refusing to remove an Ansible inventory outside its directory')
+		return
+	if os.path.exists(safe_inventory):
 		try:
-			os.remove(inventory)
+			os.remove(safe_inventory)
 		except OSError as error:
 			roxywi_common.logging('Roxy-WI server', f'error: Cannot remove temporary Ansible inventory: {error}')
 
@@ -304,6 +340,7 @@ def run_ansible(inv: dict, server_ips: list, ansible_role: str) -> dict:
 	agent_pid = None
 	inventory = ''
 
+	playbook = _ansible_playbook(ansible_role)
 	try:
 		try:
 			agent_pid = server_mod.start_ssh_agent()
@@ -330,7 +367,7 @@ def run_ansible(inv: dict, server_ips: list, ansible_role: str) -> dict:
 			if 'DOCKER' in inv['server']['hosts'][server_ip]:
 				tags = 'docker' if inv['server']['hosts'][server_ip]['DOCKER'] else 'system'
 
-		inventory = _create_secure_inventory(inv, ansible_role)
+		inventory = _create_secure_inventory(inv)
 		envvars = {
 			'ANSIBLE_DISPLAY_OK_HOSTS': 'no',
 			'ANSIBLE_SHOW_CUSTOM_STATS': 'no',
@@ -349,7 +386,7 @@ def run_ansible(inv: dict, server_ips: list, ansible_role: str) -> dict:
 			private_data_dir=ANSIBLE_PRIVATE_DATA_DIR,
 			inventory=inventory,
 			envvars=envvars,
-			playbook=f'{ANSIBLE_PRIVATE_DATA_DIR}/roles/{ansible_role}.yml',
+			playbook=playbook,
 			tags=tags,
 		)
 		if result.rc != 0:
@@ -384,14 +421,15 @@ def run_ansible_locally(inv: dict, ansible_role: str) -> dict:
 		'AWX_DISPLAY': False,
 		'ANSIBLE_PYTHON_INTERPRETER': '/usr/bin/python3'
 	}
+	playbook = _ansible_playbook(ansible_role)
 	inventory = ''
 	try:
-		inventory = _create_secure_inventory(inv, ansible_role)
+		inventory = _create_secure_inventory(inv)
 		result = _ansible_runner().run(
 			private_data_dir=ANSIBLE_PRIVATE_DATA_DIR,
 			inventory=inventory,
 			envvars=envvars,
-			playbook=f'{ANSIBLE_PRIVATE_DATA_DIR}/roles/{ansible_role}.yml',
+			playbook=playbook,
 		)
 		if result.rc != 0:
 			raise RuntimeError(

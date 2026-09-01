@@ -244,6 +244,19 @@
         "auto_rollback_failed": "Échec du déploiement et de l'annulation automatique", "cancelled": "Annulée"
     }
 } %}
+{% set deployment_policy = {
+    "title": "Politique de déploiement des configurations",
+    "configure": "Configurer la politique de déploiement",
+    "help": "Choisissez le mode de déploiement des modifications pour chaque service de ce groupe. La validation reste disponible dans tous les modes.",
+    "modes": {"both": "Direct et Change Center", "change_center": "Change Center obligatoire", "direct": "Déploiement direct uniquement"},
+    "save": "Enregistrer la politique",
+    "cancel": "Annuler",
+    "saved": "Politique de déploiement enregistrée",
+    "load_error": "Impossible de charger la politique de déploiement",
+    "save_error": "Impossible d’enregistrer la politique de déploiement",
+    "change_center_only": "Change Center obligatoire",
+    "direct_disabled_help": "Le déploiement direct est désactivé pour ce service et ce groupe. Validez la configuration ici, puis créez une modification dans Change Center."
+} %}
 {% set services = {
     "hapservers_desc": "Checker surveille le service. Si le service change d\'état, Vérifier l\'alerte via Telegram, Slack, Email, Web",
     "last_edit": "Dernière modif."

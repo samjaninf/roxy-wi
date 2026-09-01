@@ -19,6 +19,7 @@ import app.modules.roxywi.auth as roxywi_auth
 import app.modules.roxywi.common as roxywi_common
 import app.modules.config.config as config_mod
 import app.modules.config.common as config_common
+import app.modules.config.deployment_policy as deployment_policy
 import app.modules.config.section as section_mod
 import app.modules.service.haproxy as service_haproxy
 import app.modules.service.nginx as service_nginx
@@ -26,6 +27,7 @@ import app.modules.server.server as server_mod
 from app.views.service.views import ServiceConfigView, ServiceConfigVersionsView
 from app.modules.roxywi.class_models import DataStrResponse, DomainName
 from app.modules.common.common_classes import SupportClass
+from app.modules.roxywi.exception import RoxywiPermissionError
 
 bp.add_url_rule('/<service>/<server_id>', view_func=ServiceConfigView.as_view('config_view_ip'), methods=['POST'])
 bp.add_url_rule('/<service>/<server_id>/versions', view_func=ServiceConfigVersionsView.as_view('config_version'), methods=['DELETE'])
@@ -182,8 +184,14 @@ def config(service, serv, edit, config_file_name, new):
     elif service in ('haproxy', 'nginx', 'apache', 'keepalived'):
         remote_config_path = str(sql.get_setting(f'{service}_config_path') or '')
 
-    if serv and edit and new_config is None:
+    deployment_mode = deployment_policy.DEFAULT_MODE
+    if serv and service in deployment_policy.SERVICES:
         roxywi_common.check_is_server_in_group(serv)
+        deployment_mode = deployment_policy.get_mode(
+            server_sql.get_server_by_ip(serv).group_id, service
+        )
+
+    if serv and edit and new_config is None:
         is_serv_protected = server_sql.is_serv_protected(serv)
         server_id = server_sql.get_server_by_ip(serv).server_id
         is_restart = service_sql.select_service_setting(server_id, service, 'restart')
@@ -226,6 +234,8 @@ def config(service, serv, edit, config_file_name, new):
         'is_serv_protected': is_serv_protected,
         'service_desc': service_sql.select_service(service),
         'user_subscription': roxywi_common.return_user_subscription(),
+        'direct_deployment_allowed': deployment_mode in ('both', 'direct'),
+        'change_center_creation_allowed': deployment_mode in ('both', 'change_center'),
         'lang': g.user_params['lang']
     }
 
@@ -288,6 +298,12 @@ def save_version(service, server_ip: Union[IPvAnyAddress, DomainName], configver
     service_desc = service_sql.select_service(service)
     save_action = request.json.get('action')
     try:
+        deployment_policy.require_direct_deployment_for_server(
+            server_ip, service, action=save_action
+        )
+    except RoxywiPermissionError as exc:
+        return jsonify({'status': 'failed', 'error': str(exc)}), 403
+    try:
         roxywi_common.logging(
             server_ip, f"Version of config has been uploaded {configver}", login=1, keep_history=1, service=service
         )
@@ -318,6 +334,9 @@ def haproxy_section(server_ip: Union[IPvAnyAddress, DomainName]):
         'serv': server_ip,
         'sections': section_mod.get_sections(cfg),
         'error': error,
+        'direct_deployment_allowed': deployment_policy.direct_deployment_allowed(
+            server_sql.get_server_by_ip(server_ip).group_id, 'haproxy'
+        ),
         'lang': g.user_params['lang']
     }
 
@@ -329,6 +348,7 @@ def haproxy_section(server_ip: Union[IPvAnyAddress, DomainName]):
 @validate()
 def haproxy_section_show(server_ip: Union[IPvAnyAddress, DomainName], section):
     server_ip = str(server_ip)
+    server = server_sql.get_server_by_ip(server_ip)
     cfg = config_common.generate_config_path('haproxy', server_ip)
     error = config_mod.get_config(server_ip, cfg)
     start_line, end_line, config_read = section_mod.get_section_from_config(cfg, section)
@@ -352,6 +372,9 @@ def haproxy_section_show(server_ip: Union[IPvAnyAddress, DomainName], section):
         'end_line': end_line,
         'section': section,
         'error': error,
+        'direct_deployment_allowed': deployment_policy.direct_deployment_allowed(
+            server.group_id, 'haproxy'
+        ),
         'lang': g.user_params['lang']
     }
 
@@ -370,6 +393,13 @@ def haproxy_section_save(server_ip: Union[IPvAnyAddress, DomainName]):
     save = request.json.get('action')
     start_line = request.json.get('start_line')
     end_line = request.json.get('end_line')
+
+    try:
+        deployment_policy.require_direct_deployment_for_server(
+            server_ip, 'haproxy', action=save
+        )
+    except RoxywiPermissionError as exc:
+        return jsonify({'status': 'failed', 'error': str(exc)}), 403
 
     if save == 'delete':
         config_file = ''

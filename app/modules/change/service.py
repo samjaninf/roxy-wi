@@ -13,6 +13,7 @@ import app.modules.common.common as common
 import app.modules.change.automation as change_automation
 import app.modules.config.common as config_common
 import app.modules.config.config as config_mod
+import app.modules.config.deployment_policy as deployment_policy
 import app.modules.db.change as change_sql
 import app.modules.db.config as config_sql
 import app.modules.db.server as server_sql
@@ -125,6 +126,7 @@ def _upload(change, local_path: str, action: str) -> str:
         'config_file_name': change.remote_path,
         'oldcfg': change.rollback_path,
         'record_version': False,
+        'deployment_policy_bypass': True,
     }
     if change.service == 'keepalived':
         output = config_mod.upload_and_restart(server.ip, local_path, action, change.service, **kwargs)
@@ -251,11 +253,19 @@ def _prepare_rollout_plan(
     return normalized
 
 
-def _target_snapshot_path(rollback_path: str | Path, server_ip: str) -> Path:
+def _snapshot_path(
+    rollback_path: str | Path,
+    server_ip: str,
+    purpose: str,
+) -> Path:
     base_path = Path(rollback_path)
     return base_path.with_name(
-        f'{base_path.stem}-before-{_safe_name(server_ip, "server")}-{uuid4().hex}{base_path.suffix}'
+        f'{_safe_name(server_ip, "server")}-{purpose}-{uuid4().hex}{base_path.suffix}'
     )
+
+
+def _target_snapshot_path(rollback_path: str | Path, server_ip: str) -> Path:
+    return _snapshot_path(rollback_path, server_ip, 'before')
 
 
 def _capture_rollout_targets(
@@ -447,9 +457,7 @@ def _ensure_base_unchanged(change) -> None:
             raise RoxywiConflictError(
                 f'The original configuration snapshot is no longer available for {target.server_name}'
             )
-        current_path = rollback_path.with_name(
-            f'{rollback_path.stem}-current-{_safe_name(target.server_ip, "server")}-{uuid4().hex}{rollback_path.suffix}'
-        )
+        current_path = _snapshot_path(rollback_path, target.server_ip, 'current')
         try:
             config_mod.get_config(
                 target.server_ip,
@@ -484,9 +492,7 @@ def _reconcile_interrupted_rollout(change) -> list:
             raise RoxywiConflictError(
                 f'The original configuration snapshot is no longer available for {target.server_name}'
             )
-        current_path = rollback_path.with_name(
-            f'{rollback_path.stem}-resume-{_safe_name(target.server_ip, "server")}-{uuid4().hex}{rollback_path.suffix}'
-        )
+        current_path = _snapshot_path(rollback_path, target.server_ip, 'resume')
         try:
             config_mod.get_config(
                 target.server_ip,
@@ -691,6 +697,7 @@ def create_change(body, user_id: int, group_id: int):
     if int(server.group_id) != int(group_id):
         raise RoxywiPermissionError('Server does not belong to the active group')
     _require_server_service(server, body.service)
+    deployment_policy.require_change_center_creation(group_id, body.service)
     remote_path = _remote_path(body.service, body.file_path)
     draft_path, rollback_path = _change_paths(body.service, server.ip)
     captured_paths = []
@@ -849,6 +856,7 @@ def _upload_target(
         slave=target.role == 'slave',
         normalize_config=normalize_config,
         user_id=change.user_id,
+        deployment_policy_bypass=True,
     )
     output = str(output or change.service.title())
     if _has_error(output):

@@ -20,6 +20,7 @@ import app.modules.roxy_wi_tools as roxy_wi_tools
 import app.modules.service.common as service_common
 import app.modules.service.action as service_action
 import app.modules.config.common as config_common
+import app.modules.config.deployment_policy as deployment_policy
 
 time_zone = sql.get_setting('time_zone')
 get_date = roxy_wi_tools.GetDate(time_zone)
@@ -280,6 +281,15 @@ def upload_and_restart(server_ip: str, cfg: str, just_save: str, service: str, *
 	:return: Error message or service title
 
 	"""
+	policy_service = kwargs.get('deployment_policy_service', service)
+	if (
+		policy_service in deployment_policy.SERVICES
+		and not kwargs.get('deployment_policy_bypass', False)
+	):
+		deployment_policy.require_direct_deployment_for_server(
+			server_ip, policy_service, action=just_save
+		)
+
 	config_path = kwargs.get('config_file_name')
 	server_id = server_sql.get_server_by_ip(server_ip).server_id
 	tmp_file = f"{sql.get_setting('tmp_config_path')}/{get_date.return_date('config')}.{config_common.get_file_format(service)}"
@@ -359,8 +369,21 @@ def master_slave_upload_and_restart(server_ip: str, cfg: str, just_save: str, se
 	:return: The output of the operation.
 
 	"""
+	masters = list(server_sql.is_master(server_ip))
+	policy_service = kwargs.get('deployment_policy_service', service)
+	policy_bypass = kwargs.get('deployment_policy_bypass', False)
+	if policy_service in deployment_policy.SERVICES and not policy_bypass:
+		# Check the complete propagation topology before the first remote write.
+		deployment_policy.require_direct_deployment_for_server(
+			server_ip, policy_service, action=just_save
+		)
+		for slave_ip, _slave_hostname in masters:
+			if slave_ip:
+				deployment_policy.require_direct_deployment_for_server(
+					slave_ip, policy_service, action=just_save
+				)
+
 	slave_output = ''
-	masters = server_sql.is_master(server_ip)
 	config_file_name = kwargs.get('config_file_name')
 	old_cfg = kwargs.get('oldcfg')
 	waf = kwargs.get('waf')
@@ -371,7 +394,8 @@ def master_slave_upload_and_restart(server_ip: str, cfg: str, just_save: str, se
 			try:
 				slv_output = upload_and_restart(
 					master[0], cfg, just_save, service, waf=waf, config_file_name=config_file_name, slave=1,
-					record_version=kwargs.get('record_version', True)
+					record_version=kwargs.get('record_version', True), deployment_policy_bypass=True,
+					deployment_policy_service=policy_service
 				)
 				slave_output += f'<br>slave_server:\n{slv_output}'
 			except Exception as e:
@@ -379,7 +403,8 @@ def master_slave_upload_and_restart(server_ip: str, cfg: str, just_save: str, se
 	try:
 		output = upload_and_restart(
 			server_ip, cfg, just_save, service, waf=waf, config_file_name=config_file_name, oldcfg=old_cfg,
-			record_version=kwargs.get('record_version', True), version_message=kwargs.get('version_message')
+			record_version=kwargs.get('record_version', True), version_message=kwargs.get('version_message'),
+			deployment_policy_bypass=True, deployment_policy_service=policy_service
 		)
 	except Exception as e:
 		output = f'error: {e}'
@@ -597,7 +622,11 @@ def show_config(server_ip: str, service: str, config_file_name: str, configver: 
 		'is_restart': service_sql.select_service_setting(server.server_id, service, 'restart'),
 		'lang': roxywi_common.get_user_lang_for_flask(),
 		'hostname': server.hostname,
-		'edit_section': edit_section
+		'edit_section': edit_section,
+		'direct_deployment_allowed': (
+			deployment_policy.direct_deployment_allowed(server.group_id, service)
+			if service in deployment_policy.SERVICES else True
+		)
 	}
 
 	return render_template('ajax/config_show.html', **kwargs)

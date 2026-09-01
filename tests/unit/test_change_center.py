@@ -109,6 +109,19 @@ def _seed_rollout_targets(change, managed_server, tmp_path, *, status='pending')
     return change_sql.create_targets(change.id, values)
 
 
+def test_snapshot_paths_stay_short_when_the_source_snapshot_name_is_long(tmp_path):
+    source = tmp_path / f'192.0.2.10-{"a" * 180}-before.cfg'
+
+    for purpose in ('before', 'current', 'resume'):
+        snapshot = change_service._snapshot_path(source, '2001:db8::10', purpose)
+
+        assert snapshot.parent == source.parent
+        assert snapshot.suffix == '.cfg'
+        assert purpose in snapshot.name
+        assert len(snapshot.name) < 100
+        assert source.stem not in snapshot.name
+
+
 def test_change_repository_supplies_rollout_defaults_without_database_defaults(monkeypatch):
     captured = {}
     marker = object()

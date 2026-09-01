@@ -1,3 +1,11 @@
+{% if lang is undefined %}
+{% import 'languages/en.html' as backup_lang %}
+{% elif lang is string %}
+{% import 'languages/'+lang+'.html' as backup_lang %}
+{% else %}
+{% set backup_lang = lang %}
+{% endif %}
+{% from 'include/admin_action_menu.html' import admin_action_menu %}
 {% for b in backups %}
 	<tr class="newbackup" id="s3-backup-table-{{b.id}}">
 		<td class="padding10 first-collumn">
@@ -20,11 +28,15 @@
 			<span id="s3-backup-description-{{b.id}}"></span>
 			{% endif %}
 		</td>
-		<td>
-		    <a class="add" onclick="cloneS3Backup({{b.id}})" id="clone-s3-backup{{b.id}}" title="Clone S3 {{b.server}}" style="cursor: pointer;"></a>
-		</td>
-		<td>
-			<a class="delete" onclick="confirmDeleteS3Backup({{b.id}})" title="Delete S3 backup {{b.server}}" style="cursor: pointer;"></a>
+		<td class="admin-actions-cell">
+			{% call admin_action_menu(backup_lang.words.actions|title()) %}
+				<button type="button" class="admin-action-item" onclick="cloneS3Backup({{b.id}})" id="clone-s3-backup{{b.id}}">
+					<span class="fas fa-copy" aria-hidden="true"></span> {{backup_lang.words.clone|title()}}
+				</button>
+				<button type="button" class="admin-action-item admin-action-item-danger" onclick="confirmDeleteS3Backup({{b.id}})">
+					<span class="fas fa-trash-alt" aria-hidden="true"></span> {{backup_lang.words.delete|title()}}
+				</button>
+			{% endcall %}
 		</td>
 	</tr>
 {% endfor %}

@@ -2,6 +2,7 @@ import app.modules.db.sql as sql
 import app.modules.common.common as common
 import app.modules.roxy_wi_tools as roxy_wi_tools
 from pathlib import Path
+from werkzeug.utils import secure_filename
 
 get_config_var = roxy_wi_tools.GetConfigVar()
 time_zone = sql.get_setting('time_zone')
@@ -62,4 +63,9 @@ def generate_config_path(service: str, server_ip: str) -> str:
 	server_ip = common.is_ip_or_dns(server_ip)
 	file_format = get_file_format(service)
 	config_dir = get_config_dir(service)
-	return f"{config_dir}/{server_ip}-{get_date.return_date('config')}.{file_format}"
+	config_filename = secure_filename(
+		f"{server_ip}-{get_date.return_date('config')}.{file_format}"
+	)
+	if not config_filename:
+		raise ValueError('Cannot generate a safe configuration filename')
+	return str(Path(config_dir) / config_filename)

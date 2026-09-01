@@ -14,11 +14,12 @@ import app.modules.db.service as service_sql
 import app.modules.roxywi.common as roxywi_common
 import app.modules.config.config as config_mod
 import app.modules.config.common as config_common
+import app.modules.config.deployment_policy as deployment_policy
 import app.modules.server.server as server_mod
 import app.modules.service.action as service_action
 import app.modules.service.common as service_common
 from app.middleware import get_user_params, page_for_admin, check_group, check_services
-from app.modules.roxywi.exception import RoxywiResourceNotFound
+from app.modules.roxywi.exception import RoxywiPermissionError, RoxywiResourceNotFound
 from app.modules.roxywi.class_models import BaseResponse, ErrorResponse, DataResponse, DataStrResponse, \
     ConfigFileNameQuery, ConfigRequest, VersionsForDelete
 from app.modules.common.common_classes import SupportClass
@@ -494,6 +495,13 @@ class ServiceConfigView(MethodView):
             return roxywi_common.handler_exceptions_for_json_data(e, '')
 
         try:
+            deployment_policy.require_direct_deployment_for_server(
+                server_ip, service, action=body.action
+            )
+        except RoxywiPermissionError as e:
+            return ErrorResponse(error=str(e)).model_dump(mode='json'), 403
+
+        try:
             cfg = config_mod.return_cfg(service, server_ip, body.file_path)
         except Exception as e:
             return roxywi_common.handler_exceptions_for_json_data(e, 'Cannot get config')
@@ -510,6 +518,8 @@ class ServiceConfigView(MethodView):
             else:
                 stderr = config_mod.master_slave_upload_and_restart(server_ip, cfg, body.action, service, oldcfg=body.config_local_path,
                                                                     config_file_name=body.file_path)
+        except RoxywiPermissionError as e:
+            return ErrorResponse(error=str(e)).model_dump(mode='json'), 403
         except Exception as e:
             return f'error: {e}', 200
 

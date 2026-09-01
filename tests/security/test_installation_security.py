@@ -188,7 +188,7 @@ def test_ansible_inventory_is_private_unique_and_removed_after_runner_error(tmp_
     if os.name == 'posix':
         assert observed['mode'] == 0o600
         assert stat.S_IMODE(inventory_dir.stat().st_mode) == 0o700
-    assert observed['path'].name.startswith('haproxy-')
+    assert observed['path'].name.startswith('roxywi-inventory-')
     assert not observed['path'].exists()
     assert list(inventory_dir.iterdir()) == []
     assert stopped_agents == [{'pid': 100, 'socket': '/tmp/test-agent.sock'}]
@@ -197,14 +197,35 @@ def test_ansible_inventory_is_private_unique_and_removed_after_runner_error(tmp_
 @pytest.mark.security
 def test_secure_inventory_uses_a_unique_filename(tmp_path, monkeypatch):
     monkeypatch.setattr(installation, 'ANSIBLE_INVENTORY_DIR', str(tmp_path))
-    first = installation._create_secure_inventory({'server': {'hosts': {}}}, 'haproxy')
-    second = installation._create_secure_inventory({'server': {'hosts': {}}}, 'haproxy')
+    first = installation._create_secure_inventory({'server': {'hosts': {}}})
+    second = installation._create_secure_inventory({'server': {'hosts': {}}})
 
     try:
         assert first != second
     finally:
         installation._remove_inventory(first)
         installation._remove_inventory(second)
+
+
+@pytest.mark.security
+def test_inventory_cleanup_refuses_paths_outside_inventory_directory(tmp_path, monkeypatch):
+    inventory_directory = tmp_path / 'inventory'
+    inventory_directory.mkdir()
+    outside_inventory = tmp_path / 'roxywi-inventory-outside.json'
+    outside_inventory.write_text('{}', encoding='utf-8')
+    monkeypatch.setattr(installation, 'ANSIBLE_INVENTORY_DIR', str(inventory_directory))
+    monkeypatch.setattr(installation.roxywi_common, 'logging', lambda *_args, **_kwargs: None)
+
+    installation._remove_inventory(str(outside_inventory))
+
+    assert outside_inventory.exists()
+
+
+@pytest.mark.security
+def test_ansible_playbook_rejects_unapproved_role_names():
+    assert installation._ansible_playbook('haproxy').endswith('/roles/haproxy.yml')
+    with pytest.raises(ValueError, match='Unsupported Ansible role'):
+        installation._ansible_playbook('../../tmp/attacker')
 
 
 def test_ha_cluster_installation_returns_flat_task_ids(app, monkeypatch):

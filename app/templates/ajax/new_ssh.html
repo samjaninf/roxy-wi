@@ -1,6 +1,7 @@
 {% if adding %}
 {% import 'languages/'+lang|default('en')+'.html' as lang %}
 {% endif %}
+{% from 'include/admin_action_menu.html' import admin_action_menu %}
 {% for ssh in sshs %}
 	<tr style="width: 50%;" id="ssh-table-{{ssh.id}}" class="ssh-table-{{ssh.id}}">
 		<td class="first-collumn padding10">
@@ -44,11 +45,15 @@
 			{% endif %}
 			<br>
 		</td>
-		<td>
+		<td class="admin-actions-cell">
 			{% if ssh.shared and g.user_params['group_id']|string() != ssh.group_id|string() %}
-                <!-- continue -->
+				<span class="admin-actions-empty">—</span>
             {% else %}
-			<a class="delete" onclick="confirmDeleteSsh({{ssh.id}})" title="{{lang.words.delete|title()}} {{ssh.name}}" style="cursor: pointer;"></a>
+			{% call admin_action_menu(lang.words.actions|title()) %}
+				<button type="button" class="admin-action-item admin-action-item-danger" onclick="confirmDeleteSsh({{ssh.id}})">
+					<span class="fas fa-trash-alt" aria-hidden="true"></span> {{lang.words.delete|title()}}
+				</button>
+			{% endcall %}
             {% endif %}
 		</td>
 	</tr>

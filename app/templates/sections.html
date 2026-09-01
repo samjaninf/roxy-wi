@@ -59,6 +59,7 @@
 					{% if not is_serv_protected or g.user_params['role'] <= 2 %}
 					<p>
 						<button type="submit" value="test" name="save" class="btn btn-default" title="{{lang.words.check|title()}} {{lang.words.config}} {{lang.words.without}} {{lang.words.saving}}">{{lang.phrases.check_config}}</button>
+						{% if direct_deployment_allowed %}
 						<button type="submit" value="save" name="save" class="btn btn-default" title="{{lang.phrases.save_title}}">{{lang.words.save|title()}}</button>
 						{% if is_restart|int == 0 %}
 						<button type="submit" value="restart" name="save" class="btn btn-default">{{lang.phrases.save_and_restart}}</button>
@@ -67,7 +68,11 @@
 						{% if section != 'globals' and section != 'defaults' %}
 						<button type="submit" value="delete" name="save" class="btn btn-default">{{lang.words.delete|title()}} {{lang.words.this}} {{lang.words.section2}}</button>
 						{% endif %}
+						{% endif %}
 					</p>
+					{% if not direct_deployment_allowed %}
+					<div class="alert alert-info"><b>{{lang.deployment_policy.change_center_only}}:</b> {{lang.deployment_policy.direct_disabled_help}}</div>
+					{% endif %}
 					{% endif %}
 				</form>
 				<script>

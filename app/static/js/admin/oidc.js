@@ -19,17 +19,32 @@
         return message;
     }
 
-    function iconAction(iconClass, title, handler) {
+    function actionMenu(items, table) {
 		const icons = {
 			map: 'fa-sitemap',
 			edit: 'fa-edit',
 			delete: 'fa-trash-alt'
 		};
-		return $('<button type="button">')
-			.addClass('rw-icon-button oidc-icon-action')
-			.attr({'title': title, 'aria-label': title})
-			.append($('<i aria-hidden="true">').addClass('fas ' + icons[iconClass]))
-			.on('click', handler);
+		const label = table.data('actions-label') || 'Actions';
+		const wrapper = $('<div>').addClass('admin-actions');
+		const toggle = $('<button type="button">')
+			.addClass('rw-icon-button admin-actions-toggle')
+			.attr({'title': label, 'aria-label': label, 'aria-haspopup': 'menu', 'aria-expanded': 'false'})
+			.append($('<i aria-hidden="true">').addClass('fas fa-ellipsis-h'));
+		const menu = $('<div role="menu" hidden>').addClass('admin-actions-menu');
+
+		items.forEach(function (item) {
+			$('<button type="button">')
+				.addClass('admin-action-item' + (item.danger ? ' admin-action-item-danger' : ''))
+				.append(
+					$('<i aria-hidden="true">').addClass('fas ' + icons[item.icon]),
+					$('<span>').text(item.title)
+				)
+				.on('click', item.handler)
+				.appendTo(menu);
+		});
+
+		return wrapper.append(toggle, menu);
     }
 
     function refreshIcons(container) {
@@ -179,21 +194,17 @@
             ).appendTo(row);
             $('<td>').text(provider.enabled ? translations.enabled : translations.disabled).appendTo(row);
             $('<td>').text(provider.client_id || '').appendTo(row);
-            $('<td>').append(
-                iconAction('map', translations.mappings_action, function () {
-                    openMappingsDialog(provider);
-                })
-            ).appendTo(row);
-            $('<td>').append(
-                iconAction('edit', translations.edit_action, function () {
-                    editProvider(provider);
-                })
+			$('<td>').addClass('admin-actions-cell').append(
+				actionMenu([
+					{icon: 'map', title: translations.mappings_action, handler: function () { openMappingsDialog(provider); }},
+					{icon: 'edit', title: translations.edit_action, handler: function () { editProvider(provider); }}
+				], $('#oidc-provider-table'))
             ).appendTo(row);
             body.append(row);
         });
 
         if (!providers.length) {
-            body.append($('<tr>').append($('<td colspan="5">').addClass('padding10').text(translations.no_providers)));
+			body.append($('<tr>').append($('<td colspan="4">').addClass('padding10').text(translations.no_providers)));
         }
         refreshIcons(body);
     }
@@ -333,11 +344,10 @@
             $('<td>').text(mapping.role_name || mapping.role_id).appendTo(row);
             $('<td>').text(mapping.active ? translations.active : translations.disabled).appendTo(row);
             $('<td>').text(mapping.priority).appendTo(row);
-            $('<td>').append(
-                iconAction('edit', translations.edit_action, function () { editMapping(mapping); })
-            ).appendTo(row);
-            $('<td>').append(
-                iconAction('delete', translations.delete_action, function () {
+			$('<td>').addClass('admin-actions-cell').append(
+				actionMenu([
+					{icon: 'edit', title: translations.edit_action, handler: function () { editMapping(mapping); }},
+					{icon: 'delete', title: translations.delete_action, danger: true, handler: function () {
 					const remove = function () {
 						$.ajax({
 							url: '/admin/oidc/mappings/' + mapping.id,
@@ -357,12 +367,13 @@
 							confirmText: translations.delete_action
 						}).then(function (confirmed) { if (confirmed) remove(); });
 					}
-                })
+				}}
+				], $('#oidc-mapping-list').closest('table'))
             ).appendTo(row);
             body.append(row);
         });
         if (!mappings.length) {
-            body.append($('<tr>').append($('<td colspan="7">').addClass('padding10').text(translations.no_mappings)));
+			body.append($('<tr>').append($('<td colspan="6">').addClass('padding10').text(translations.no_mappings)));
         }
         refreshIcons(body);
     }

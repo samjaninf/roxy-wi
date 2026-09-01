@@ -77,6 +77,10 @@ def add_setting_for_new_group(group_id):
 		{'param': 'apache_container_name', 'value': 'apache', 'section': 'apache', 'desc': 'Docker container name for Apache service', 'group_id': group_id},
 		{'param': 'keepalived_config_path', 'value': '/etc/keepalived/keepalived.conf', 'section': 'keepalived', 'desc': 'Path to the main Keepalived configuration file', 'group_id': group_id},
 		{'param': 'keepalived_path_logs', 'value': '/var/log/keepalived/', 'section': 'keepalived', 'desc': 'The path for Keepalived logs', 'group_id': group_id},
+		{'param': 'haproxy_deployment_mode', 'value': 'both', 'section': 'change_center', 'desc': 'Configuration deployment mode for HAProxy', 'group_id': group_id},
+		{'param': 'nginx_deployment_mode', 'value': 'both', 'section': 'change_center', 'desc': 'Configuration deployment mode for NGINX', 'group_id': group_id},
+		{'param': 'apache_deployment_mode', 'value': 'both', 'section': 'change_center', 'desc': 'Configuration deployment mode for Apache', 'group_id': group_id},
+		{'param': 'keepalived_deployment_mode', 'value': 'both', 'section': 'change_center', 'desc': 'Configuration deployment mode for Keepalived', 'group_id': group_id},
 	]
 
 	try:

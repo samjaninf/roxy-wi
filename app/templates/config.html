@@ -103,13 +103,22 @@
 				<div class="config-editor-actions">
 					<a href="/config/{{service}}/{{serv}}/show" class="rw-button rw-button-secondary" title="{{lang.phrases.return_to_config}}">{{lang.words.back|title()}}</a>
 					<button type="submit" value="test" name="action" class="rw-button rw-button-secondary" title="{{lang.words.check|title()}} {{lang.words.config}} {{lang.words.without}} {{lang.words.saving}}">{{lang.phrases.check_config}}</button>
+					{% if direct_deployment_allowed %}
 					<button type="submit" value="save" name="action" class="rw-button rw-button-secondary" title="{{lang.phrases.save_title}}">{{lang.words.save|title()}}</button>
 					{% if is_restart|int == 0 %}
 					<button type="submit" value="restart" name="action" class="rw-button rw-button-secondary">{{lang.phrases.save_and_restart}}</button>
 					{% endif %}
 					<button type="submit" value="reload" name="action" class="rw-button rw-button-secondary">{{lang.phrases.save_and_reload}}</button>
+					{% endif %}
+					{% if change_center_creation_allowed %}
 					<button type="button" id="open-change-dialog" class="rw-button rw-button-primary"><span class="fas fa-file-signature" aria-hidden="true"></span> {{lang.change_center.create}}</button>
+					{% endif %}
 				</div>
+				{% if not direct_deployment_allowed %}
+				<div class="alert alert-info config-deployment-policy-note">
+					<b>{{lang.deployment_policy.change_center_only}}:</b> {{lang.deployment_policy.direct_disabled_help}}
+				</div>
+				{% endif %}
 					{% if service != 'keepalived' %}
 					<div class="alert alert-info" style="margin-left: -0px;"><b>{{lang.words.note|title()}}:</b> {{lang.phrases.master_slave}}</div>
                     <div class="alert alert-info" style="margin-left: -0px;">Read more about <a href="https://roxy-wi.org/description/hotkeys" target="_blank">Hotkeys</a></div>

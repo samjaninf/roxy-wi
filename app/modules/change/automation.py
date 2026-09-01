@@ -407,7 +407,11 @@ def _validate_webhook_destination(url: str) -> None:
     try:
         addresses = socket.getaddrinfo(parsed.hostname, parsed.port or (443 if parsed.scheme == 'https' else 80))
     except OSError as exc:
-        raise RoxywiValidationError(f'Webhook host cannot be resolved: {exc}') from exc
+        logger.warning(
+            f'Cannot resolve Change Center webhook host {parsed.hostname}: {exc}',
+            exception=exc,
+        )
+        raise RoxywiValidationError('Webhook host cannot be resolved') from exc
     for address in addresses:
         ip = ipaddress.ip_address(address[4][0])
         if isinstance(ip, ipaddress.IPv6Address) and ip.ipv4_mapped:

@@ -1674,6 +1674,34 @@ label {
     gap: 4px;
     font-weight: 600;
 }
+
+.deployment-policy-grid {
+	display: grid;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+	gap: 14px 18px;
+	margin-top: 16px;
+}
+.deployment-policy-grid label {
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+	font-weight: 600;
+}
+.deployment-policy-grid .ui-selectmenu-button {
+	box-sizing: border-box;
+}
+.deployment-policy-group-name {
+	margin-bottom: 4px;
+	font-size: 1.05em;
+}
+.group-deployment-policy-button {
+	margin-right: 6px;
+}
+@media (max-width: 700px) {
+	.deployment-policy-grid {
+		grid-template-columns: 1fr;
+	}
+}
 .oidc-form-grid input,
 .oidc-form-grid select,
 .oidc-mapping-form input,

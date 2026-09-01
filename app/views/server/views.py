@@ -10,8 +10,10 @@ import app.modules.db.server as server_sql
 import app.modules.roxywi.group as group_mod
 import app.modules.roxywi.common as roxywi_common
 import app.modules.server.server as server_mod
+import app.modules.config.deployment_policy as deployment_policy
 from app.middleware import get_user_params, page_for_admin, check_group
-from app.modules.roxywi.class_models import BaseResponse, IdResponse, IdDataResponse, ServerRequest, GroupQuery, GroupRequest
+from app.modules.roxywi.class_models import BaseResponse, IdResponse, IdDataResponse, ServerRequest, GroupQuery, GroupRequest, \
+    GroupDeploymentPolicyRequest
 from app.modules.common.common_classes import SupportClass
 
 
@@ -602,6 +604,44 @@ class ServerGroupsView(MethodView):
         for group in groups:
             groups_list.append(model_to_dict(group))
         return jsonify(groups_list)
+
+
+class GroupDeploymentPolicyView(MethodView):
+    """Manage per-service configuration deployment modes for one group."""
+
+    methods = ['GET', 'PUT']
+    decorators = [jwt_required(), get_user_params(), page_for_admin()]
+
+    def get(self, group_id: int):
+        try:
+            group_sql.get_group(group_id)
+            return jsonify({
+                'status': 'success',
+                'data': deployment_policy.get_group_policy(group_id),
+            })
+        except Exception as exc:
+            return roxywi_common.handler_exceptions_for_json_data(
+                exc, 'Cannot get deployment policy'
+            )
+
+    @validate(body=GroupDeploymentPolicyRequest)
+    def put(self, group_id: int, body: GroupDeploymentPolicyRequest):
+        try:
+            group = group_sql.get_group(group_id)
+            policy = deployment_policy.update_group_policy(
+                group_id, body.model_dump(mode='json')
+            )
+            roxywi_common.logging(
+                'Roxy-WI server',
+                f'Configuration deployment policy for group {group.name} has been updated',
+                roxywi=1,
+                login=1,
+            )
+            return jsonify({'status': 'success', 'data': policy})
+        except Exception as exc:
+            return roxywi_common.handler_exceptions_for_json_data(
+                exc, 'Cannot update deployment policy'
+            )
 
 
 class ServerIPView(MethodView):

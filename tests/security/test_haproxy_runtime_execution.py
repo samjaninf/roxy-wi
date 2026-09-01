@@ -160,7 +160,8 @@ def test_runtime_add_server_uses_backend_address_for_health_check(monkeypatch):
 
 
 @pytest.fixture()
-def haproxy_config(tmp_path):
+def haproxy_config(tmp_path, monkeypatch):
+    monkeypatch.setattr(runtime.config_common, 'get_config_dir', lambda _service: str(tmp_path))
     config_path = tmp_path / 'haproxy.cfg'
     config_path.write_text(
         'global\n'
@@ -212,12 +213,41 @@ def test_runtime_config_server_name_is_matched_literally(haproxy_config):
 
 @pytest.mark.security
 def test_runtime_list_path_cannot_escape_group_directory(tmp_path):
-    group_directory = tmp_path / 'lists' / '7'
+    group_directory = tmp_path / 'lists' / '7' / 'white'
     group_directory.mkdir(parents=True)
 
-    assert runtime._list_file_path(str(tmp_path), 7, 'allowed.lst') == group_directory / 'allowed.lst'
-    with pytest.raises(ValueError, match='outside'):
-        runtime._list_file_path(str(tmp_path), 7, '../other-group.lst')
+    assert runtime._list_file_path(str(tmp_path), 7, 'white/allowed.lst') == group_directory / 'allowed.lst'
+
+    invalid_names = (
+        'allowed.lst',
+        '../other-group.lst',
+        'white/../../other-group.lst',
+        'white\\..\\other-group.lst',
+        'other/allowed.lst',
+        'white/not-a-list.txt',
+        'white/name with spaces.lst',
+    )
+    for invalid_name in invalid_names:
+        with pytest.raises(ValueError):
+            runtime._list_file_path(str(tmp_path), 7, invalid_name)
+
+
+@pytest.mark.security
+def test_runtime_config_path_cannot_escape_config_directory(tmp_path, monkeypatch):
+    config_directory = tmp_path / 'configs'
+    config_directory.mkdir()
+    monkeypatch.setattr(runtime.config_common, 'get_config_dir', lambda _service: str(config_directory))
+
+    allowed = config_directory / 'haproxy.cfg'
+    assert runtime._runtime_config_path(str(allowed)) == allowed.resolve()
+
+    for invalid_path in (
+        tmp_path / 'haproxy.cfg',
+        config_directory / '..' / 'outside.cfg',
+        config_directory / 'name with spaces.cfg',
+    ):
+        with pytest.raises(ValueError):
+            runtime._runtime_config_path(str(invalid_path))
 
 
 @pytest.mark.security

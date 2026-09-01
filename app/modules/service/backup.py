@@ -94,6 +94,7 @@ def create_backup(json_data: BackupRequest, is_api: bool) -> tuple:
             backups=backup_sql.select_backups(backup_id=last_id),
             sshs=cred_sql.select_ssh(),
             servers=roxywi_common.get_dick_permit(virt=1, disable=0, only_group=1),
+            lang=roxywi_common.get_user_lang_for_flask(),
         )
         return IdDataResponse(data=data, id=last_id).model_dump(mode='json'), 201
 
@@ -127,7 +128,11 @@ def create_s3_backup(data: S3BackupRequest, is_api: bool) -> tuple:
     if is_api:
         return IdResponse(id=last_id).model_dump(mode='json'), 201
     else:
-        temp = render_template('ajax/new_s3_backup.html', backups=backup_sql.select_s3_backups(**data.model_dump(mode='json')))
+        temp = render_template(
+            'ajax/new_s3_backup.html',
+            backups=backup_sql.select_s3_backups(**data.model_dump(mode='json')),
+            lang=roxywi_common.get_user_lang_for_flask(),
+        )
         return IdDataResponse(id=last_id, data=temp).model_dump(mode='json'), 201
 
 

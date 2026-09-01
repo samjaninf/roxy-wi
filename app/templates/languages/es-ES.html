@@ -243,6 +243,19 @@
         "auto_rollback_failed": "Fallaron el despliegue y la reversión automática", "cancelled": "Cancelado"
     }
 } %}
+{% set deployment_policy = {
+    "title": "Política de despliegue de configuraciones",
+    "configure": "Configurar la política de despliegue",
+    "help": "Elija cómo se despliegan los cambios para cada servicio de este grupo. La validación está disponible en todos los modos.",
+    "modes": {"both": "Directo y Change Center", "change_center": "Change Center obligatorio", "direct": "Solo despliegue directo"},
+    "save": "Guardar política",
+    "cancel": "Cancelar",
+    "saved": "Política de despliegue guardada",
+    "load_error": "No se pudo cargar la política de despliegue",
+    "save_error": "No se pudo guardar la política de despliegue",
+    "change_center_only": "Change Center obligatorio",
+    "direct_disabled_help": "El despliegue directo está deshabilitado para este servicio y grupo. Valide la configuración aquí y cree un cambio en Change Center."
+} %}
 {% set services = {
     "hapservers_desc": "Checker supervisa el servicio. Si el servicio cambia su estado, Checker alertará vía Telegram, Slack, Email, Web",
     "last_edit": "Última edición"

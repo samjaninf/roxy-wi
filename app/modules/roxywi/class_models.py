@@ -149,6 +149,13 @@ class GroupRequest(BaseModel):
     description: Optional[EscapedString] = None
 
 
+class GroupDeploymentPolicyRequest(BaseModel):
+    haproxy: Literal['both', 'change_center', 'direct']
+    nginx: Literal['both', 'change_center', 'direct']
+    apache: Literal['both', 'change_center', 'direct']
+    keepalived: Literal['both', 'change_center', 'direct']
+
+
 class CredRequest(BaseModel):
     name: EscapedString
     username: EscapedString

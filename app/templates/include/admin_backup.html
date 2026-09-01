@@ -1,5 +1,6 @@
 {% import 'languages/'+lang|default('en')+'.html' as lang %}
 {% from 'include/input_macros.html' import input, select, copy_to_clipboard, checkbox %}
+{% from 'include/admin_action_menu.html' import admin_action_menu %}
 {% if not is_needed_tool %}
     <div style="text-align: center;">
 		<h3>{{lang.admin_page.desc.no_ansible}} Ansible</h3>.
@@ -29,7 +30,7 @@
 					<th>{{lang.words.branch|title()}}</th>
 					<td>{{lang.words.creds|title()}}</td>
 					<th>{{lang.words.desc|title()}}</th>
-					<th></th>
+					<th class="admin-actions-cell">{{lang.words.actions|title()}}</th>
 				</tr>
 			</thead>
 			<tbody>
@@ -57,8 +58,7 @@
 				<td style="width: 15%">{{lang.words.period|title()}}</td>
 				<td style="width: 15%">{{lang.words.creds|title()}}</td>
 				<td style="width: 100%">{{lang.words.desc|title()}}</td>
-				<td style="margin-left: 5px;"></td>
-				<td></td>
+				<td class="admin-actions-cell">{{lang.words.actions|title()}}</td>
 			</tr>
 			{% include 'ajax/new_backup.html' %}
 		</table>
@@ -73,8 +73,7 @@
 				<td style="width: 10%">Bucket</td>
 				<td style="width: 15%">{{lang.words.period|title()}}</td>
 				<td style="width: 100%">{{lang.words.desc|title()}}</td>
-				<td style="margin-left: 5px;"></td>
-				<td></td>
+				<td class="admin-actions-cell">{{lang.words.actions|title()}}</td>
 			</tr>
 			</thead>
 			<tbody id="tbody-s3">
@@ -102,11 +101,15 @@
 						<span id="s3-backup-description-{{b.id}}"></span>
 						{% endif %}
 					</td>
-					<td>
-						<a class="add" onclick="cloneS3Backup({{b.id}})" id="clone-s3-backup{{b.id}}" title="{{lang.words.clone|title()}} S3 {{s.2}}" style="cursor: pointer;"></a>
-					</td>
-					<td>
-						<a class="delete" onclick="confirmDeleteS3Backup({{b.id}})" title="{{lang.words.delete|title()}} S3 {{lang.words.backup}} {{s.2}}" style="cursor: pointer;"></a>
+					<td class="admin-actions-cell">
+						{% call admin_action_menu(lang.words.actions|title()) %}
+							<button type="button" class="admin-action-item" onclick="cloneS3Backup({{b.id}})" id="clone-s3-backup{{b.id}}">
+								<span class="fas fa-copy" aria-hidden="true"></span> {{lang.words.clone|title()}}
+							</button>
+							<button type="button" class="admin-action-item admin-action-item-danger" onclick="confirmDeleteS3Backup({{b.id}})">
+								<span class="fas fa-trash-alt" aria-hidden="true"></span> {{lang.words.delete|title()}}
+							</button>
+						{% endcall %}
 					</td>
 				</tr>
 			{% endif %}

@@ -115,11 +115,15 @@ def service_statuses(service):
             result = service_view.get(service, server_id)
             payload = _service_status_payload(result)
         except Exception as exc:
+            roxywi_common.logging(
+                'Roxy-WI server',
+                f'error: Cannot get {service} status for server ID {server_id}: {exc}',
+            )
             payload = {
                 'server_id': server_id,
                 'service': service,
                 'status': 'failed',
-                'error': str(exc),
+                'error': 'Cannot get service status',
                 'http_status': 500,
             }
         payload.setdefault('server_id', server_id)

@@ -1,3 +1,12 @@
+{% if lang is undefined %}
+{% import 'languages/en.html' as backup_lang %}
+{% elif lang is string %}
+{% import 'languages/'+lang+'.html' as backup_lang %}
+{% else %}
+{% set backup_lang = lang %}
+{% endif %}
+{% from 'include/input_macros.html' import input, select, copy_to_clipboard %}
+{% from 'include/admin_action_menu.html' import admin_action_menu %}
 {% for b in backups %}
     {% for s in servers %}
     {% if b.server_id|string() == s.0|string() %}
@@ -42,11 +51,15 @@
                         {{ input('backup-description-'+b.id|string()) }}
                     {% endif %}
                 </td>
-                <td>
-                <a class="add" onclick="cloneBackup({{b.id}})" id="clone-backup{{b.id}}" title="{{lang.words.clone|title()}} {{b.server_id}}" style="cursor: pointer;"></a>
-            </td>
-            <td>
-                <a class="delete" onclick="confirmDeleteBackup({{b.id}})" title="{{lang.words.delete|title()}} {{lang.words.backup}} {{b.server_id}}" style="cursor: pointer;"></a>
+			<td class="admin-actions-cell">
+				{% call admin_action_menu(backup_lang.words.actions|title()) %}
+					<button type="button" class="admin-action-item" onclick="cloneBackup({{b.id}})" id="clone-backup{{b.id}}">
+						<span class="fas fa-copy" aria-hidden="true"></span> {{backup_lang.words.clone|title()}}
+					</button>
+					<button type="button" class="admin-action-item admin-action-item-danger" onclick="confirmDeleteBackup({{b.id}})">
+						<span class="fas fa-trash-alt" aria-hidden="true"></span> {{backup_lang.words.delete|title()}}
+					</button>
+				{% endcall %}
             </td>
     </tr>
     {% endif %}

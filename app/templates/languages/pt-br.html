@@ -243,6 +243,19 @@
         "auto_rollback_failed": "Falha na implantação e na reversão automática", "cancelled": "Cancelada"
     }
 } %}
+{% set deployment_policy = {
+    "title": "Política de implantação de configurações",
+    "configure": "Configurar política de implantação",
+    "help": "Escolha como as alterações podem ser implantadas para cada serviço deste grupo. A validação permanece disponível em todos os modos.",
+    "modes": {"both": "Direto e Change Center", "change_center": "Change Center obrigatório", "direct": "Somente implantação direta"},
+    "save": "Salvar política",
+    "cancel": "Cancelar",
+    "saved": "Política de implantação salva",
+    "load_error": "Não foi possível carregar a política de implantação",
+    "save_error": "Não foi possível salvar a política de implantação",
+    "change_center_only": "Change Center obrigatório",
+    "direct_disabled_help": "A implantação direta está desativada para este serviço e grupo. Valide a configuração aqui e crie uma alteração no Change Center."
+} %}
 {% set services = {
     "hapservers_desc": "O Checker está moditorando o serviço. Quando o serviço mudar o estado, o Checker vou enviar uma notificação via Telegram, Slack, Email, Web",
     "last_edit": "Editado por último"

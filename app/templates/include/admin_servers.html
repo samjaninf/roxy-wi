@@ -1,4 +1,5 @@
 {% from 'include/input_macros.html' import input, checkbox, copy_to_clipboard %}
+{% from 'include/admin_action_menu.html' import admin_action_menu %}
 {% if not adding %}
 <table class="overview overview-overflow" id="ajax-servers">
 	<thead>
@@ -13,7 +14,6 @@
 			<th style="min-width: 40px; padding-left: 17px;" class="help_cursor">
 				<span title="{{lang.words.virtual|title()}} IP, something like VRRP">{{lang.words.virt|title()}}</span>
 			</th>
-			<th class="checkbox-head" style="min-width: 60px" id="server-haproxy-th">{{lang.words.services|title()}}</th>
 			<th style="min-width: 105px;" class="help_cursor" id="server-firewalld-th">
 				<span title="If the server has a firewall enabled, enable this option">Firewalld</span>
 			</th>
@@ -25,10 +25,7 @@
 			</th>
 			<th class="cred-field">{{lang.words.creds|title()}}</th>
 			<th style="width: 100%">{{lang.words.desc|title()}}</th>
-			<th style="min-width: 17px;"></th>
-			<th></th>
-			<th></th>
-			<th></th>
+			<th class="admin-actions-cell">{{lang.words.actions|title()}}</th>
 		</tr>
 	</thead>
 	<tbody>
@@ -78,19 +75,13 @@
 					{{ checkbox(id) }}
 				{% endif %}
 			</td>
-			<td>
-				<span title="{{lang.words.change2|title()}} {{lang.words.active}} {{lang.words.services}}" style="cursor: pointer; margin-left: 15px;" class="div-pic" onclick="openChangeServerServiceDialog('{{server.0}}')"></span>
-			</td>
 			<td class="checkbox" style="padding-left: 0">
-				<div class="controlgroup">
-					{% set id = 'firewall-' + server.0|string() %}
-					{% if server.18 == 1 %}
-					{{ checkbox(id, checked='checked') }}
-					{% else %}
-					{{ checkbox(id) }}
-					{% endif %}
-					<button onclick="viewFirewallRules('{{server.2}}')" title="{{lang.words.view|title()}} firewall {{lang.words.rules2}} {{lang.words.on}} {{lang.words.server2}} {{server.1}}" class="overflow" style="width: 60px;height: 28px;">{{lang.words.view}}</button>
-				</div>
+				{% set id = 'firewall-' + server.0|string() %}
+				{% if server.18 == 1 %}
+				{{ checkbox(id, checked='checked') }}
+				{% else %}
+				{{ checkbox(id) }}
+				{% endif %}
 			</td>
 			<td class="checkbox" style="padding-left: 15px;">
 				{% set id = 'protected-' + server.0|string() %}
@@ -115,8 +106,7 @@
 				</select>
 			</td>
 			<td>
-				<div class="controlgroup">
-					<select id="credentials-{{server.0}}">
+				<select id="credentials-{{server.0}}">
 						<option disabled selected>------</option>
 						{% for ssh in sshs %}
 							{% if ssh.id == server.7 %}
@@ -125,9 +115,7 @@
 								<option value="{{ssh.id}}">{{ssh.name}}</option>
 							{% endif %}
 						{% endfor %}
-					</select>
-					<button onclick="checkSshConnect('{{server.2}}')" title="Check SSH connect to the server {{server.1}}" class="overflow" style="width: 70px;height: 25px;">{{lang.words.check}}</button>
-				</div>
+				</select>
 			</td>
 			<td>
 				{% set id = 'desc-' + server.0|string() %}
@@ -137,17 +125,30 @@
 					{{ input(id, size='20') }}
 				{% endif %}
 			</td>
-			<td>
-				<a href="/history/server/{{server.2}}" title="{{lang.words.view|title}} {{lang.words.history}} {{lang.words.for}} {{lang.words.this}} {{lang.words.server}}" class="history"></a>
-			</td>
-			<td style="min-width: 17px;">
-				<a class="info" onclick="showServerInfo('{{server.0}}', '{{server.2}}')" id="server_info_link-{{server.0}}" title="{{lang.words.show|title()}} {{lang.words.server}} {{lang.words.info}}" style="cursor: pointer; color: var(--green-color)"></a>
-			</td>
-			<td>
-				<a class="add" onclick="cloneServer({{server.0}})" id="clone-{{server.0}}" title="{{lang.words.copy|title()}} {{lang.words.settings}} {{server.1}}" style="cursor: pointer;"></a>
-			</td>
-			<td>
-				<a class="delete" onclick="confirmDeleteServer({{server.0}})" title="{{lang.words.delete|title()}} {{lang.words.server}} {{server.1}}" style="cursor: pointer;"></a>
+			<td class="admin-actions-cell">
+				{% call admin_action_menu(lang.words.actions|title()) %}
+					<button type="button" class="admin-action-item" onclick="openChangeServerServiceDialog('{{server.0}}')">
+						<span class="fas fa-cogs" aria-hidden="true"></span> {{lang.words.change2|title()}} {{lang.words.services|title()}}
+					</button>
+					<button type="button" class="admin-action-item" onclick="viewFirewallRules('{{server.2}}')">
+						<span class="fas fa-shield-alt" aria-hidden="true"></span> {{lang.words.view|title()}} Firewall {{lang.words.rules2|title()}}
+					</button>
+					<button type="button" class="admin-action-item" onclick="checkSshConnect('{{server.2}}')">
+						<span class="fas fa-terminal" aria-hidden="true"></span> {{lang.words.check|title()}} SSH
+					</button>
+					<a class="admin-action-item" href="/history/server/{{server.2}}">
+						<span class="fas fa-history" aria-hidden="true"></span> {{lang.words.view|title()}} {{lang.words.history}}
+					</a>
+					<button type="button" class="admin-action-item" onclick="showServerInfo('{{server.0}}', '{{server.2}}')" id="server_info_link-{{server.0}}">
+						<span class="fas fa-info-circle" aria-hidden="true"></span> {{lang.words.show|title()}} {{lang.words.info|title()}}
+					</button>
+					<button type="button" class="admin-action-item" onclick="cloneServer({{server.0}})" id="clone-{{server.0}}">
+						<span class="fas fa-copy" aria-hidden="true"></span> {{lang.words.w_copy|title()}} {{lang.words.settings}}
+					</button>
+					<button type="button" class="admin-action-item admin-action-item-danger" onclick="confirmDeleteServer({{server.0}})">
+						<span class="fas fa-trash-alt" aria-hidden="true"></span> {{lang.words.delete|title()}}
+					</button>
+				{% endcall %}
 			</td>
 		</tr>
     {% endfor %}

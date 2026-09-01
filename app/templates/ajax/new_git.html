@@ -1,3 +1,11 @@
+{% if lang is undefined %}
+{% import 'languages/en.html' as backup_lang %}
+{% elif lang is string %}
+{% import 'languages/'+lang+'.html' as backup_lang %}
+{% else %}
+{% set backup_lang = lang %}
+{% endif %}
+{% from 'include/admin_action_menu.html' import admin_action_menu %}
 {% for b in gits %}
     {% for server in servers %}
     {% if server.0|string() == b.server_id|string() %}
@@ -53,8 +61,12 @@
 			{% endif %}
             </span>
 		</td>
-		<td>
-			<a class="delete" onclick="confirmDeleteGit({{b.id}})" style="cursor: pointer;"></a>
+		<td class="admin-actions-cell">
+			{% call admin_action_menu(backup_lang.words.actions|title()) %}
+				<button type="button" class="admin-action-item admin-action-item-danger" onclick="confirmDeleteGit({{b.id}})">
+					<span class="fas fa-trash-alt" aria-hidden="true"></span> {{backup_lang.words.delete|title()}}
+				</button>
+			{% endcall %}
 		</td> 
 	</tr>
     {% endif %}

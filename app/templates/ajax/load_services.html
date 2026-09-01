@@ -1,4 +1,5 @@
 {% import 'languages/'+lang|default('en')+'.html' as lang %}
+{% from 'include/admin_action_menu.html' import admin_action_menu %}
 {% set services_name = {
 	'roxy-wi-checker': { 'name': 'Checker', 'desc': lang.admin_page.desc.checker_desc },
 	'roxy-wi-keep_alive': { 'name': 'Auto start', 'desc': lang.admin_page.desc.auto_start_desc },
@@ -37,25 +38,31 @@
         {% endif %}
         {{services_name[service.0]['name']}}
     </td>
-    <td class="padding10 first-collumn">
+	<td class="admin-actions-cell">
+		{% call admin_action_menu(lang.words.actions|title()) %}
         {% if 'is not installed' in service.2['current_version'] or not service.2['current_version'] or service.2['current_version'] == '0' %}
             {% if service.0 in ('rabbitmq-server', 'fail2ban') %}
-                <a class="ui-button ui-widget ui-corner-all" href="https://roxy-wi.org/tools/{{service.0.split('-')[0]}}" title="{{lang.words.install|title()}} {{services_name[service.0]['name']}}" target="_blank">{{lang.words.install|title()}}</a>
+				<a class="admin-action-item" href="https://roxy-wi.org/tools/{{service.0.split('-')[0]}}" target="_blank" rel="noopener noreferrer">
+					<span class="fas fa-external-link-alt" aria-hidden="true"></span> {{lang.words.install|title()}}
+				</a>
             {% else %}
-                <a class="ui-button ui-widget ui-corner-all" onclick="updateService('{{service.0}}', 'install')" title="{{lang.words.install|title()}} {{service_name}}">{{lang.words.install|title()}}</a>
+				<button type="button" class="admin-action-item" onclick="updateService('{{service.0}}', 'install')">
+					<span class="fas fa-download" aria-hidden="true"></span> {{lang.words.install|title()}}
+				</button>
             {% endif %}
         {% else %}
-        <a id="start-{{ service.0 }}" class="start" title="{{is_service_started_title}}">
-            <span class="service-start {{is_service_started_class}}" onclick="{{onclick_start_action}}"></span>
-        </a>
-        <a id="restart-{{ service.2 }}" class="restart" title="{{lang.words.restart|title()}} {{services_name[service.0]['name']}} {{lang.words.service}}">
-            <span class="service-reload service-restart" onclick="confirmAjaxServiceAction('restart', '{{service.0}}')"></span>
-        </a>
-        <a id="stop-{{ service.0 }}" class="stop" title="{{is_service_stopped_title}}">
-            <span class="service-stop {{is_service_stopped_class}}" onclick="{{onclick_stop_action}}"></span>
-        </a>
+		<button type="button" id="start-{{ service.0 }}" class="admin-action-item" {% if is_service_started_class %}disabled{% else %}onclick="{{onclick_start_action}}"{% endif %}>
+			<span class="fas fa-play" aria-hidden="true"></span> {{lang.words.start|title()}}
+		</button>
+		<button type="button" id="restart-{{ service.0 }}" class="admin-action-item" onclick="confirmAjaxServiceAction('restart', '{{service.0}}')">
+			<span class="fas fa-redo" aria-hidden="true"></span> {{lang.words.restart|title()}}
+		</button>
+		<button type="button" id="stop-{{ service.0 }}" class="admin-action-item admin-action-item-danger" {% if is_service_stopped_class %}disabled{% else %}onclick="{{onclick_stop_action}}"{% endif %}>
+			<span class="fas fa-stop" aria-hidden="true"></span> {{lang.words.stop|title()}}
+		</button>
         {% endif %}
-    </td>
+		{% endcall %}
+	</td>
     <td>
         {% if 'is not installed' not in service.2['current_version'] %}
         {{service.2['current_version']}}

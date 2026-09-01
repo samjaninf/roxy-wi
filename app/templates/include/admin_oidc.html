@@ -1,14 +1,13 @@
 <script id="oidc-translations" type="application/json">{{ lang.oidc_page|tojson }}</script>
 <script defer src="{{ url_for('static', filename='js/admin/oidc.js') }}"></script>
 <div class="oidc-admin">
-    <table class="overview" id="oidc-provider-table" data-ux-table data-searchable="true" data-page-size="20">
+    <table class="overview" id="oidc-provider-table" data-ux-table data-searchable="true" data-page-size="20" data-actions-label="{{lang.words.actions|title()}}">
         <thead>
             <tr class="overviewHead">
                 <th class="padding10 first-collumn">{{ lang.oidc_page.provider }}</th>
                 <th style="width: 15%;">{{ lang.oidc_page.status }}</th>
                 <th style="width: 100%;">{{ lang.oidc_page.client_id }}</th>
-                <th></th>
-                <th></th>
+				<th class="admin-actions-cell">{{lang.words.actions|title()}}</th>
             </tr>
         </thead>
         <tbody id="oidc-provider-list"></tbody>
@@ -82,7 +81,7 @@
             </div>
         </div>
         <p>{{ lang.oidc_page.mapping_help }}</p>
-        <table class="overview oidc-table" data-ux-table data-searchable="true" data-page-size="20">
+        <table class="overview oidc-table" data-ux-table data-searchable="true" data-page-size="20" data-actions-label="{{lang.words.actions|title()}}">
             <thead>
                 <tr class="overviewHead">
                     <th class="padding10 first-collumn">{{ lang.oidc_page.external_group }}</th>
@@ -90,8 +89,7 @@
                     <th>{{ lang.oidc_page.role }}</th>
                     <th>{{ lang.oidc_page.status }}</th>
                     <th>{{ lang.oidc_page.priority }}</th>
-                    <th></th>
-                    <th></th>
+					<th class="admin-actions-cell">{{lang.words.actions|title()}}</th>
                 </tr>
             </thead>
             <tbody id="oidc-mapping-list"></tbody>

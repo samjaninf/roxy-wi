@@ -19,7 +19,7 @@
 		$('#open-editor-config-file').on('click', function () {
 			const selectedFile = fileSelect.val();
 			if (selectedFile) {
-				window.location.assign('/config/' + encodeURIComponent(editorService) + '/' + encodeURIComponent(editorServer) + '/edit/' + selectedFile);
+				window.location.assign('/config/' + encodeURIComponent(editorService) + '/' + encodeURIComponent(editorServer) + '/edit/' + encodeURIComponent(selectedFile));
 			}
 		});
 	})();

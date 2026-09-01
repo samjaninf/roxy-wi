@@ -292,6 +292,19 @@
         "auto_rollback_failed": "Deployment and automatic rollback failed", "cancelled": "Cancelled"
     }
 } %}
+{% set deployment_policy = {
+    "title": "Configuration deployment policy",
+    "configure": "Configure deployment policy",
+    "help": "Choose how configuration changes may be deployed for each service in this group. Configuration checks remain available in every mode.",
+    "modes": {"both": "Direct and Change Center", "change_center": "Change Center required", "direct": "Direct deployment only"},
+    "save": "Save policy",
+    "cancel": "Cancel",
+    "saved": "Deployment policy saved",
+    "load_error": "Cannot load deployment policy",
+    "save_error": "Cannot save deployment policy",
+    "change_center_only": "Change Center required",
+    "direct_disabled_help": "Direct deployment is disabled for this service and group. Validate the configuration here, then create a change in Change Center."
+} %}
 {% set services = {
     "hapservers_desc": "Checker monitors the service. If the service changes its status, Checker will alert via Telegram, Slack, Email, Web",
     "last_edit": "Last edit"

@@ -1,4 +1,5 @@
 {% import 'languages/'+lang|default('en')+'.html' as lang %}
+{% from 'include/admin_action_menu.html' import admin_action_menu %}
 {% set services_name = {
 	'roxy-wi-checker': { 'link': 'checker', 'name': 'Checker', 'desc': lang.admin_page.desc.checker_desc },
 	'roxy-wi-keep_alive': { 'link': 'auto_start', 'name': 'Auto start', 'desc': lang.admin_page.desc.auto_start_desc },
@@ -29,12 +30,18 @@
     <td class="padding10">
         <b>{{versions.new_ver}}</b>
     </td>
-    <td>
+    <td class="admin-actions-cell">
         {% if versions.need_update %}
-        <a class="ui-button ui-widget ui-corner-all" onclick="updateService('roxy-wi')" title="{{lang.words.w_update|title()}} Roxy-WI">{{lang.words.w_update|title()}}</a>
+		{% call admin_action_menu(lang.words.actions|title()) %}
+			<button type="button" class="admin-action-item" onclick="updateService('roxy-wi')">
+				<span class="fas fa-download" aria-hidden="true"></span> {{lang.words.w_update|title()}}
+			</button>
+		{% endcall %}
+		{% else %}
+		<span class="admin-actions-empty">—</span>
         {% endif %}
     </td>
-    <td colspan="2">
+    <td colspan="3">
         {{lang.admin_page.desc.main_app}}
     </td>
 </tr>
@@ -68,14 +75,25 @@
             {{s.2['new_version']}}
         </b>
     </td>
-    <td>
+	<td class="admin-actions-cell">
         {% if 'is not installed' not in s.2['current_version'] and s.2['current_version'] != '' and s.2['current_version'] != '0' %}
             {% if is_need_update %}
-                <a class="ui-button ui-widget ui-corner-all" onclick="updateService('{{s.0}}')" title="{{lang.words.w_update|title()}} {{services_name[s.0]['name']}}">{{lang.words.w_update|title()}}</a>
+				{% call admin_action_menu(lang.words.actions|title()) %}
+					<button type="button" class="admin-action-item" onclick="updateService('{{s.0}}')">
+						<span class="fas fa-download" aria-hidden="true"></span> {{lang.words.w_update|title()}}
+					</button>
+				{% endcall %}
+			{% else %}
+				<span class="admin-actions-empty">—</span>
             {% endif %}
-        {% endif %}
-        {% if s.2['current_version'] == '0'  %}
-            <a class="ui-button ui-widget ui-corner-all" onclick="updateService('{{s.0}}', 'install')" title="{{lang.words.install|title()}} {{service_name}}">{{lang.words.install|title()}}</a>
+		{% elif s.2['current_version'] == '0' %}
+			{% call admin_action_menu(lang.words.actions|title()) %}
+				<button type="button" class="admin-action-item" onclick="updateService('{{s.0}}', 'install')">
+					<span class="fas fa-download" aria-hidden="true"></span> {{lang.words.install|title()}}
+				</button>
+			{% endcall %}
+		{% else %}
+			<span class="admin-actions-empty">—</span>
         {% endif %}
     </td>
     <td colspan="3">

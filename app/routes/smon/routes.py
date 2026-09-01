@@ -16,6 +16,14 @@ import app.modules.tools.common as tools_common
 from app.modules.subscription.access import SMON_STATUS_PAGES, feature_required
 
 
+def _status_page_error(exc: Exception, operation: str):
+    roxywi_common.logging(
+        'Roxy-WI server',
+        f'error: Cannot {operation} status page: {exc}',
+    )
+    return f'error: Cannot {operation} status page', 500
+
+
 @bp.route('/dashboard')
 @jwt_required()
 @get_user_params()
@@ -283,7 +291,7 @@ def status_page():
         try:
             return smon_mod.create_status_page(name, slug, desc, checks['checks'])
         except Exception as e:
-            return f'{e}'
+            return _status_page_error(e, 'create')
     elif request.method == 'PUT':
         page_id = int(request.form.get('page_id'))
         name = common.checkAjaxInput(request.form.get('name'))
@@ -297,13 +305,13 @@ def status_page():
         try:
             return smon_mod.edit_status_page(page_id, name, slug, desc, checks['checks'], g.user_params['group_id'])
         except Exception as e:
-            return f'{e}'
+            return _status_page_error(e, 'update')
     elif request.method == 'DELETE':
         page_id = int(request.form.get('page_id'))
         try:
             smon_mod.delete_status_page(page_id, g.user_params['group_id'])
         except Exception as e:
-            return f'{e}'
+            return _status_page_error(e, 'delete')
         else:
             return 'ok'
 

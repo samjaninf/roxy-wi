@@ -1,3 +1,11 @@
+class RoxywiPublicError(Exception):
+    """Base class for domain errors whose message is safe to return to a client."""
+
+    def __init__(self, message: str):
+        self.public_message = message
+        super().__init__(message)
+
+
 class RoxywiGroupMismatch(Exception):
     """ Raised when not superAdmin tris update resource not from its group. """
 
@@ -12,11 +20,11 @@ class RoxywiGroupNotFound(Exception):
         super(RoxywiGroupNotFound, self).__init__('Group not found')
 
 
-class RoxywiResourceNotFound(Exception):
+class RoxywiResourceNotFound(RoxywiPublicError):
     """ This class represents an exception raised when a resource is not found. """
 
     def __init__(self, message='Resource not found'):
-        super(RoxywiResourceNotFound, self).__init__(message)
+        super().__init__(message)
 
 
 class RoxywiCheckLimits(Exception):
@@ -26,22 +34,22 @@ class RoxywiCheckLimits(Exception):
         super(RoxywiCheckLimits, self).__init__(message)
 
 
-class RoxywiValidationError(Exception):
+class RoxywiValidationError(RoxywiPublicError):
     """ This class represents an exception raised when a validation error occurs. """
 
     def __init__(self, message='Validation error'):
-        super(RoxywiValidationError, self).__init__(message)
+        super().__init__(message)
 
 
-class RoxywiPermissionError(Exception):
+class RoxywiPermissionError(RoxywiPublicError):
     """ This class represents an exception raised when a permission error occurs. """
 
     def __init__(self, message='Forbidden'):
-        super(RoxywiPermissionError, self).__init__(message)
+        super().__init__(message)
 
 
-class RoxywiConflictError(Exception):
+class RoxywiConflictError(RoxywiPublicError):
     """ This class represents an exception raised when a conflict error occurs."""
 
     def __init__(self, message='Conflict'):
-        super(RoxywiConflictError, self).__init__(message)
+        super().__init__(message)

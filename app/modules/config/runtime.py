@@ -1,8 +1,9 @@
 import json
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 import re
 
 from flask import render_template, jsonify
+from werkzeug.utils import secure_filename
 
 import app.modules.db.sql as sql
 import app.modules.db.server as server_sql
@@ -30,12 +31,27 @@ _SECTION_NAMES = {
 }
 
 
+def _runtime_config_path(config_path: str) -> Path:
+	"""Return a sanitized HAProxy work-file path inside its configured directory."""
+	config_directory = Path(config_common.get_config_dir('haproxy')).resolve()
+	requested_path = Path(config_path)
+	config_filename = secure_filename(requested_path.name)
+	if not config_filename or config_filename != requested_path.name:
+		raise ValueError('Invalid runtime configuration filename')
+	safe_path = (config_directory / config_filename).resolve()
+	if safe_path.parent != config_directory or requested_path.resolve() != safe_path:
+		raise ValueError('Runtime configuration is outside of the HAProxy configuration directory')
+	return safe_path
+
+
 def _read_config_lines(config_path: str) -> list[str]:
-	return Path(config_path).read_text(encoding='utf-8', errors='replace').splitlines(keepends=True)
+	safe_path = _runtime_config_path(config_path)
+	return safe_path.read_text(encoding='utf-8', errors='replace').splitlines(keepends=True)
 
 
 def _write_config_lines(config_path: str, lines: list[str]) -> None:
-	Path(config_path).write_text(''.join(lines), encoding='utf-8')
+	safe_path = _runtime_config_path(config_path)
+	safe_path.write_text(''.join(lines), encoding='utf-8')
 
 
 def _find_section(lines: list[str], section_types, section_name: str = '') -> tuple[int, int]:
@@ -125,9 +141,21 @@ def _set_server_maxconn(config_path: str, backend: str, server: str, maxconn: in
 
 
 def _list_file_path(lib_path: str, user_group: int, list_name: str) -> Path:
-	base_path = (Path(lib_path) / 'lists' / str(user_group)).resolve()
-	list_path = (base_path / list_name).resolve()
-	if list_path == base_path or base_path not in list_path.parents:
+	if not isinstance(list_name, str) or '\\' in list_name or '\x00' in list_name:
+		raise ValueError('Invalid list filename')
+	parts = PurePosixPath(list_name).parts
+	if len(parts) != 2 or parts[0] not in ('white', 'black'):
+		raise ValueError('List file must belong to the white or black list directory')
+	list_filename = secure_filename(parts[1])
+	if not list_filename or list_filename != parts[1] or not list_filename.endswith('.lst'):
+		raise ValueError('Invalid list filename')
+
+	base_path = (Path(lib_path) / 'lists' / str(int(user_group))).resolve()
+	list_directory = (base_path / parts[0]).resolve()
+	if list_directory.parent != base_path:
+		raise ValueError('List file is outside of the group directory')
+	list_path = (list_directory / list_filename).resolve()
+	if list_path.parent != list_directory:
 		raise ValueError('List file is outside of the group directory')
 	return list_path
 

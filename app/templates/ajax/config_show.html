@@ -393,7 +393,7 @@
 	{% if configver %}
 	<br>
 		{% if role <= 3 %}
-		{% if not is_serv_protected or role <= 2 %}
+		{% if (not is_serv_protected or role <= 2) and direct_deployment_allowed %}
 		<form action="/config/versions/{{service}}/{{serv}}/{{configver}}/save" id="save_version" method="post" class="left-space">
 			<input type="hidden" value="{{serv}}" name="serv">
 			<input type="hidden" value="{{service}}" name="service">
@@ -408,6 +408,9 @@
 			{% endif %}
 		</form>
 		{% endif %}
+		{% endif %}
+		{% if not direct_deployment_allowed %}
+		<div class="alert alert-info"><b>{{lang.deployment_policy.change_center_only}}:</b> {{lang.deployment_policy.direct_disabled_help}}</div>
 		{% endif %}
 		<div class="alert alert-info"><b>{{lang.words.note|title()}}:</b> {{lang.phrases.master_slave|title()}}</div>
 	{% endif %}
